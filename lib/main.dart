@@ -13,6 +13,7 @@ import 'screens/routine_screen.dart';
 import 'services/api_service.dart';
 import 'services/reminder_service.dart'; // ✅ ADD THIS IMPORT
 import 'models/user_profile.dart';
+import 'theme/app_theme.dart';
 
 void main() async {
   // ✅ REQUIRED: must call before any async work in main()
@@ -109,6 +110,10 @@ class _YogaMitraAppState extends State<YogaMitraApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(debugShowCheckedModeBanner: false, home: startScreen);
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: buildAppTheme(),
+      home: startScreen,
+    );
   }
 }

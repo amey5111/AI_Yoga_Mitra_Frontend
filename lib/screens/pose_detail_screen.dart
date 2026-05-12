@@ -3,11 +3,11 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/api_service.dart';
 import '../utils/language_helper.dart';
+import '../theme/app_theme.dart';
 
 class PoseDetailScreen extends StatefulWidget {
   final int poseId;
   const PoseDetailScreen({super.key, required this.poseId});
-
   @override
   State<PoseDetailScreen> createState() => _PoseDetailScreenState();
 }
@@ -16,106 +16,67 @@ class _PoseDetailScreenState extends State<PoseDetailScreen> {
   bool loading = true;
   Map<String, dynamic>? pose;
 
-  Color get purple => const Color(0xFF7C4DFF);
-  Color get purpleDark => const Color(0xFF5E35B1);
-  Color get chipBg => const Color(0xFFF3E5F5);
-  Color get youtubeRed => const Color(0xFFE10600);
-
   String get langCode {
     switch (LanguageHelper.currentLanguage) {
-      case "मराठी":
-        return "mr";
-      case "हिंदी":
-        return "hn";
-      default:
-        return "en";
+      case "मराठी": return "mr";
+      case "हिंदी": return "hn";
+      default: return "en";
     }
   }
 
   String get videoSoonText {
     switch (LanguageHelper.currentLanguage) {
-      case "मराठी":
-        return "🎬 व्हिडिओ लवकरच येईल";
-      case "हिंदी":
-        return "🎬 वीडियो जल्द ही आएगा";
-      default:
-        return "🎬 Video will come soon";
+      case "मराठी": return "🎬 व्हिडिओ लवकरच येईल";
+      case "हिंदी": return "🎬 वीडियो जल्द आएगा";
+      default: return "🎬 Video coming soon";
     }
   }
 
   @override
-  void initState() {
-    super.initState();
-    _loadPose();
-  }
+  void initState() { super.initState(); _loadPose(); }
 
   Future<void> _loadPose() async {
-    try {
-      final p = await ApiService.fetchPoseById(widget.poseId);
-      pose = p;
-    } catch (_) {}
+    try { final p = await ApiService.fetchPoseById(widget.poseId); pose = p; } catch (_) {}
     if (mounted) setState(() => loading = false);
   }
 
-  Widget _chip(String text) {
+  Widget _chip(String text, {IconData? icon}) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: chipBg,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        text,
-        style: GoogleFonts.inter(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: purpleDark,
-        ),
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      decoration: BoxDecoration(color: AppColors.chipBg, borderRadius: BorderRadius.circular(99)),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        if (icon != null) ...[Icon(icon, size: 13, color: AppColors.accent), const SizedBox(width: 5)],
+        Text(text, style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.accent)),
+      ]),
     );
   }
 
   Widget _section(String title, dynamic data, IconData icon) {
     if (data == null) return const SizedBox.shrink();
-
-    List items = [];
-    if (data is List) {
-      items = data;
-    } else {
-      items = [data];
-    }
-
+    List items = data is List ? data : [data];
     if (items.isEmpty) return const SizedBox.shrink();
-
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      decoration: BoxDecoration(color: AppColors.bgCard, borderRadius: BorderRadius.circular(16), boxShadow: AppShadows.soft),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Icon(icon, color: purpleDark),
-                const SizedBox(width: 8),
-                Text(
-                  title,
-                  style: GoogleFonts.poppins(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
+            Row(children: [
+              Container(padding: const EdgeInsets.all(7), decoration: BoxDecoration(color: AppColors.chipBg, borderRadius: BorderRadius.circular(9)), child: Icon(icon, color: AppColors.accent, size: 16)),
+              const SizedBox(width: 10),
+              Expanded(child: Text(title, style: AppTextStyles.heading3())),
+            ]),
+            const SizedBox(height: 12),
             for (var e in items)
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Text(
-                  e is Map ? "• ${e.values.join(" : ")}" : "• $e",
-                  style: GoogleFonts.inter(fontSize: 15),
-                ),
+                padding: const EdgeInsets.symmetric(vertical: 3),
+                child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  const Padding(padding: EdgeInsets.only(top: 3), child: Icon(Icons.circle, size: 6, color: AppColors.accent)),
+                  const SizedBox(width: 10),
+                  Expanded(child: Text(e is Map ? e.values.join(" : ") : '$e', style: AppTextStyles.body())),
+                ]),
               ),
           ],
         ),
@@ -125,351 +86,171 @@ class _PoseDetailScreenState extends State<PoseDetailScreen> {
 
   Future<void> _openVideoSheet(Map<String, dynamic> videos) async {
     String selectedLang = "en";
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            final video = videos[selectedLang];
-
-            String formatDuration(int seconds) {
-              final minutes = seconds ~/ 60;
-              final remaining = seconds % 60;
-              return "${minutes}:${remaining.toString().padLeft(2, '0')}";
-            }
-
-            String formatDate(String isoDate) {
-              final date = DateTime.parse(isoDate);
-              return "${date.day}/${date.month}/${date.year}";
-            }
-
-            return DraggableScrollableSheet(
-              expand: false,
-              initialChildSize: 0.75,
-              builder: (_, scrollController) {
-                return Container(
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(24),
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 12),
-
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: ["en", "hn", "mr"].map((code) {
-                          final isSelected = selectedLang == code;
-                          final label = code == "en"
-                              ? "EN"
-                              : code == "hn"
-                              ? "हिंदी"
-                              : "मराठी";
-
-                          return ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: isSelected
-                                  ? purple
-                                  : Colors.grey.shade200,
-                            ),
-                            onPressed: () {
-                              setModalState(() {
-                                selectedLang = code;
-                              });
-                            },
-                            child: Text(
-                              label,
-                              style: TextStyle(
-                                color: isSelected ? Colors.white : Colors.black,
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-
-                      const SizedBox(height: 20),
-
-                      if (video == null)
-                        Expanded(
-                          child: Center(
-                            child: Text(
-                              videoSoonText,
-                              style: GoogleFonts.poppins(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.grey[600],
-                              ),
-                            ),
+      builder: (_) => StatefulBuilder(
+        builder: (context, setModalState) {
+          final video = videos[selectedLang];
+          String formatDuration(int s) { final m = s ~/ 60; final r = s % 60; return "$m:${r.toString().padLeft(2, '0')}"; }
+          String formatDate(String iso) { final d = DateTime.parse(iso); return "${d.day}/${d.month}/${d.year}"; }
+          return DraggableScrollableSheet(
+            expand: false, initialChildSize: 0.78,
+            builder: (_, sc) => Container(
+              decoration: const BoxDecoration(color: AppColors.bgCard, borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+              child: Column(
+                children: [
+                  const SizedBox(height: 12),
+                  Container(width: 40, height: 4, decoration: BoxDecoration(color: AppColors.divider, borderRadius: BorderRadius.circular(99))),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: ["en", "hn", "mr"].map((code) {
+                      final isSel = selectedLang == code;
+                      final label = code == "en" ? "EN" : code == "hn" ? "हिंदी" : "मराठी";
+                      return GestureDetector(
+                        onTap: () => setModalState(() => selectedLang = code),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          margin: const EdgeInsets.symmetric(horizontal: 5),
+                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
+                          decoration: BoxDecoration(
+                            color: isSel ? AppColors.accent : AppColors.chipBg,
+                            borderRadius: BorderRadius.circular(99),
                           ),
-                        )
-                      else
-                        Expanded(
-                          child: SingleChildScrollView(
-                            controller: scrollController,
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                GestureDetector(
-                                  onTap: () async {
-                                    final uri = Uri.parse(video['youtube_url']);
-                                    if (await canLaunchUrl(uri)) {
-                                      await launchUrl(
-                                        uri,
-                                        mode: LaunchMode.externalApplication,
-                                      );
-                                    }
-                                  },
-                                  child: Stack(
-                                    alignment: Alignment.center,
-                                    children: [
-                                      ClipRRect(
-                                        borderRadius: BorderRadius.circular(16),
-                                        child: Image.network(
-                                          video['thumbnail'],
-                                          fit: BoxFit.cover,
-                                        ),
-                                      ),
-                                      Container(
-                                        decoration: const BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          color: Colors.red,
-                                        ),
-                                        padding: const EdgeInsets.all(16),
-                                        child: const Icon(
-                                          Icons.play_arrow,
-                                          color: Colors.white,
-                                          size: 32,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-
-                                const SizedBox(height: 20),
-
-                                Text(
-                                  video['title'],
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-
-                                const SizedBox(height: 8),
-
-                                Text(
-                                  video['channel_name'],
-                                  style: GoogleFonts.inter(
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.grey[700],
-                                  ),
-                                ),
-
-                                const SizedBox(height: 12),
-
-                                Wrap(
-                                  spacing: 12,
-                                  runSpacing: 8,
-                                  children: [
-                                    _chip(
-                                      "Duration: ${formatDuration(video['duration_seconds'])}",
-                                    ),
-                                    _chip(
-                                      "Published: ${formatDate(video['published_at'])}",
-                                    ),
-                                    _chip("License: ${video['license']}"),
-                                  ],
-                                ),
-
-                                const SizedBox(height: 24),
-
-                                Center(
-                                  child: ElevatedButton(
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: youtubeRed,
-                                    ),
-                                    onPressed: () async {
-                                      final uri = Uri.parse(
-                                        video['youtube_url'],
-                                      );
-                                      if (await canLaunchUrl(uri)) {
-                                        await launchUrl(
-                                          uri,
-                                          mode: LaunchMode.externalApplication,
-                                        );
-                                      }
-                                    },
-                                    child: const Text("Watch on YouTube"),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+                          child: Text(label, style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600, color: isSel ? Colors.white : AppColors.accent)),
                         ),
-                    ],
+                      );
+                    }).toList(),
                   ),
-                );
-              },
-            );
-          },
-        );
-      },
+                  const SizedBox(height: 16),
+                  if (video == null)
+                    Expanded(child: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+                      const Icon(Icons.videocam_off_rounded, size: 48, color: AppColors.textSecondary),
+                      const SizedBox(height: 12),
+                      Text(videoSoonText, style: AppTextStyles.heading3(color: AppColors.textSecondary)),
+                    ])))
+                  else
+                    Expanded(
+                      child: SingleChildScrollView(
+                        controller: sc,
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            GestureDetector(
+                              onTap: () async { final uri = Uri.parse(video['youtube_url']); if (await canLaunchUrl(uri)) await launchUrl(uri, mode: LaunchMode.externalApplication); },
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(16),
+                                child: Stack(alignment: Alignment.center, children: [
+                                  Image.network(video['thumbnail'], fit: BoxFit.cover),
+                                  Container(width: 64, height: 64, decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.red), child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 36)),
+                                ]),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(video['title'], style: AppTextStyles.heading3()),
+                            const SizedBox(height: 6),
+                            Text(video['channel_name'], style: AppTextStyles.caption()),
+                            const SizedBox(height: 12),
+                            Wrap(spacing: 8, runSpacing: 8, children: [
+                              _chip("Duration: ${formatDuration(video['duration_seconds'])}", icon: Icons.timer_outlined),
+                              _chip("Published: ${formatDate(video['published_at'])}", icon: Icons.calendar_today_outlined),
+                              _chip(video['license'], icon: Icons.verified_outlined),
+                            ]),
+                            const SizedBox(height: 20),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFE10600), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)), padding: const EdgeInsets.symmetric(vertical: 14)),
+                                onPressed: () async { final uri = Uri.parse(video['youtube_url']); if (await canLaunchUrl(uri)) await launchUrl(uri, mode: LaunchMode.externalApplication); },
+                                icon: const Icon(Icons.play_circle_rounded),
+                                label: Text("Watch on YouTube", style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    if (loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
-
-    if (pose == null) {
-      return const Scaffold(body: Center(child: Text("Pose not found")));
-    }
+    if (loading) return const Scaffold(body: AppLoadingIndicator());
+    if (pose == null) return Scaffold(appBar: AppBar(), body: Center(child: Text("Pose not found", style: AppTextStyles.heading3(color: AppColors.textSecondary))));
 
     final p = pose!;
-    final url = p['image_url'];
+    final imageUrl = p['image_url'];
 
     return Scaffold(
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
-            expandedHeight: 300,
-            pinned: true,
-            backgroundColor: purple,
-            flexibleSpace: FlexibleSpaceBar(
-              title: Text(
-                p['name']?[langCode] ?? "",
-                style: const TextStyle(color: Colors.white),
-              ),
-              background: Stack(
-                fit: StackFit.expand,
-                children: [
-                  Image.network(url, fit: BoxFit.cover),
-                  Container(color: Colors.black26),
-                ],
+            expandedHeight: 300, pinned: true,
+            leading: Padding(
+              padding: const EdgeInsets.all(8),
+              child: GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: Container(decoration: BoxDecoration(color: Colors.black.withOpacity(0.3), shape: BoxShape.circle), child: const Icon(Icons.arrow_back_rounded, color: Colors.white)),
               ),
             ),
+            flexibleSpace: FlexibleSpaceBar(
+              title: Text(p['name']?[langCode] ?? '', style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white)),
+              background: Stack(fit: StackFit.expand, children: [
+                Image.network(imageUrl, fit: BoxFit.cover, errorBuilder: (_, __, ___) => Container(decoration: const BoxDecoration(gradient: AppGradients.routineCard))),
+                Container(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.transparent, Colors.black.withOpacity(0.55)]))),
+              ]),
+            ),
           ),
-
           SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (p['name_sanskrit'] != null)
-                    Text(
-                      p['name_sanskrit'],
-                      style: GoogleFonts.poppins(fontStyle: FontStyle.italic),
+            child: Column(
+              children: [
+                const SizedBox(height: 14),
+                if (p['name_sanskrit'] != null)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Text(p['name_sanskrit'], style: GoogleFonts.poppins(fontStyle: FontStyle.italic, color: AppColors.textSecondary)),
+                  ),
+                const SizedBox(height: 10),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Wrap(spacing: 8, runSpacing: 8, children: [
+                    if ((p['difficulty_level']?[langCode] ?? '').isNotEmpty)
+                      _chip("${LanguageHelper.t("Difficulty", "अडचण", "कठिनाई")}: ${p['difficulty_level']![langCode]}", icon: Icons.bolt_rounded),
+                    if (p['duration_seconds'] != null) _chip("${p['duration_seconds']}s", icon: Icons.timer_outlined),
+                    if (p['repetitions'] != null) _chip("${p['repetitions']}x", icon: Icons.repeat_rounded),
+                  ]),
+                ),
+                const SizedBox(height: 8),
+                _section(LanguageHelper.t("Primary Benefits", "मुख्य फायदे", "मुख्य लाभ"), p['primary_benefits']?[langCode], Icons.favorite_outline_rounded),
+                _section(LanguageHelper.t("Instructions", "सूचना", "निर्देश"), p['instructions']?[langCode], Icons.list_rounded),
+                _section(LanguageHelper.t("Breathing Cues", "श्वसन मार्गदर्शन", "श्वास संकेत"), p['breathing_cues']?[langCode], Icons.air_rounded),
+                _section(LanguageHelper.t("Contraindications", "टाळावयाच्या अवस्था", "वर्जनाएं"), p['contraindications']?[langCode], Icons.warning_amber_rounded),
+                _section(LanguageHelper.t("Precautions", "काळजी", "सावधानियां"), p['precautions']?[langCode], Icons.shield_outlined),
+                _section(LanguageHelper.t("Modifications", "पर्याय", "संशोधन"), p['modifications']?[langCode], Icons.tune_rounded),
+                _section(LanguageHelper.t("Props Needed", "आवश्यक साहित्य", "उपकरण"), p['props_needed']?[langCode], Icons.sports_gymnastics_rounded),
+                if (p['detailed_benefits'] != null)
+                  _section(LanguageHelper.t("Detailed Benefits", "सविस्तर फायदे", "विस्तृत लाभ"), p['detailed_benefits']?[langCode], Icons.insights_rounded),
+                const SizedBox(height: 16),
+                if (p['video'] != null)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: AppPrimaryButton(
+                      label: LanguageHelper.t("Watch YouTube Video", "व्हिडिओ पाहा", "वीडियो देखें"),
+                      icon: Icons.play_circle_rounded,
+                      onPressed: () => _openVideoSheet(p['video']),
                     ),
-
-                  const SizedBox(height: 10),
-
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      _chip(
-                        "${LanguageHelper.t("Difficulty", "अडचण पातळी", "कठिनाई स्तर")}: ${p['difficulty_level']?[langCode] ?? ""}",
-                      ),
-                      if (p['duration_seconds'] != null)
-                        _chip("Time: ${p['duration_seconds']}s"),
-                      if (p['repetitions'] != null)
-                        _chip("Reps: ${p['repetitions']}x"),
-                    ],
                   ),
-
-                  const SizedBox(height: 16),
-
-                  _section(
-                    LanguageHelper.t(
-                      "Primary Benefits",
-                      "मुख्य फायदे",
-                      "मुख्य लाभ",
-                    ),
-                    p['primary_benefits']?[langCode],
-                    Icons.favorite,
-                  ),
-
-                  _section(
-                    LanguageHelper.t("Instructions", "सूचना", "निर्देश"),
-                    p['instructions']?[langCode],
-                    Icons.list,
-                  ),
-
-                  _section(
-                    LanguageHelper.t(
-                      "Breathing Cues",
-                      "श्वसन मार्गदर्शन",
-                      "श्वास संकेत",
-                    ),
-                    p['breathing_cues']?[langCode],
-                    Icons.air,
-                  ),
-
-                  _section(
-                    LanguageHelper.t(
-                      "Contraindications",
-                      "टाळावयाच्या अवस्था",
-                      "वर्जनाएं",
-                    ),
-                    p['contraindications']?[langCode],
-                    Icons.warning,
-                  ),
-
-                  _section(
-                    LanguageHelper.t("Precautions", "काळजी", "सावधानियां"),
-                    p['precautions']?[langCode],
-                    Icons.shield,
-                  ),
-
-                  _section(
-                    LanguageHelper.t("Modifications", "पर्याय", "संशोधन"),
-                    p['modifications']?[langCode],
-                    Icons.tune,
-                  ),
-
-                  _section(
-                    LanguageHelper.t(
-                      "Props Needed",
-                      "आवश्यक साहित्य",
-                      "आवश्यक उपकरण",
-                    ),
-                    p['props_needed']?[langCode],
-                    Icons.sports_gymnastics,
-                  ),
-
-                  if (p['detailed_benefits'] != null)
-                    _section(
-                      LanguageHelper.t(
-                        "Detailed Benefits",
-                        "सविस्तर फायदे",
-                        "विस्तृत लाभ",
-                      ),
-                      p['detailed_benefits']?[langCode],
-                      Icons.insights,
-                    ),
-
-                  const SizedBox(height: 20),
-
-                  if (p['video'] != null)
-                    Center(
-                      child: ElevatedButton(
-                        onPressed: () => _openVideoSheet(p['video']),
-                        child: const Text("Watch YouTube Video"),
-                      ),
-                    ),
-
-                  const SizedBox(height: 40),
-                ],
-              ),
+                const SizedBox(height: 40),
+              ],
             ),
           ),
         ],
