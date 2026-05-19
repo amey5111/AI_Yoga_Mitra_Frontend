@@ -8,6 +8,7 @@ import '../utils/language_helper.dart';
 import '../theme/app_theme.dart';
 import 'pose_detail_screen.dart';
 import 'breathing_detail_screen.dart';
+import '../Widgets/language_switcher.dart';
 
 class EditRoutineScreen extends StatefulWidget {
   final List<Map<String, dynamic>> routineSteps;
@@ -104,7 +105,7 @@ class _EditRoutineScreenState extends State<EditRoutineScreen> {
             t(
               "Add at least one item.",
               "किमान एक योगा प्रकार जोडा.",
-              "कम से कम एक आइटम जोड़ें।",
+              "कम से कम एक योगा प्रकार जोड़ें।",
             ),
           ),
         ),
@@ -469,23 +470,36 @@ class _EditRoutineScreenState extends State<EditRoutineScreen> {
                             ),
                           ),
                         ),
+
                         const SizedBox(width: 14),
-                        Text(
-                          t(
-                            "Customize Routine",
-                            "दिनचर्या सानुकूलित करा",
-                            "दिनचर्या अनुकूलित करें",
+
+                        Expanded(
+                          child: Text(
+                            t(
+                              "Customize Routine",
+                              "दिनचर्या सानुकूलित करा",
+                              "दिनचर्या अनुकूलित करें",
+                            ),
+                            style: GoogleFonts.poppins(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
                           ),
-                          style: GoogleFonts.poppins(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
-                          ),
+                        ),
+
+                        LanguageSwitcher(
+                          onLanguageChanged: () {
+                            setState(() {});
+                          },
                         ),
                       ],
                     ),
+
                     const SizedBox(height: 14),
+
                     Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Container(
                           padding: const EdgeInsets.symmetric(
@@ -497,15 +511,18 @@ class _EditRoutineScreenState extends State<EditRoutineScreen> {
                             borderRadius: BorderRadius.circular(99),
                           ),
                           child: Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
                               const Icon(
                                 Icons.list_alt_rounded,
                                 color: Colors.white,
                                 size: 16,
                               ),
+
                               const SizedBox(width: 6),
+
                               Text(
-                                '${_routineItems.length} ${t("items", "योगा प्रकार", "आइटम")}',
+                                '${_routineItems.length} ${t("items", "योगा प्रकार", "योगा प्रकार")}',
                                 style: GoogleFonts.inter(
                                   color: Colors.white,
                                   fontSize: 13,

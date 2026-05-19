@@ -8,6 +8,7 @@ import '../utils/language_helper.dart';
 import '../theme/app_theme.dart';
 import 'routine_screen.dart';
 import 'profile_screen.dart';
+import '../Widgets/language_switcher.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -100,7 +101,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Column(
                     children: [
                       // Back button row
+                      // Back button row
                       Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           GestureDetector(
                             onTap: () => Navigator.pop(context),
@@ -117,6 +120,13 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             ),
                           ),
+
+                          LanguageSwitcher(
+                            popupOffset: const Offset(25, 20),
+                            onLanguageChanged: () {
+                              setState(() {});
+                            },
+                          ),
                         ],
                       ),
                       const SizedBox(height: 20),
@@ -132,11 +142,18 @@ class _LoginScreenState extends State<LoginScreen> {
                             width: 2,
                           ),
                         ),
-                        child: Image.asset('assets/logo.png', fit: BoxFit.contain),
+                        child: Image.asset(
+                          'assets/logo.png',
+                          fit: BoxFit.contain,
+                        ),
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        LanguageHelper.t("Welcome Back", "पुन्हा स्वागत", "वापस स्वागत"),
+                        LanguageHelper.t(
+                          "Welcome Back",
+                          "आपले परत स्वागत आहे ",
+                          "वापसी पर स्वागत है",
+                        ),
                         style: GoogleFonts.poppins(
                           fontSize: 26,
                           fontWeight: FontWeight.w700,
@@ -184,7 +201,11 @@ class _LoginScreenState extends State<LoginScreen> {
                         controller: passwordController,
                         obscureText: _obscurePassword,
                         decoration: appInputDecoration(
-                          label: LanguageHelper.t("Password", "पासवर्ड", "पासवर्ड"),
+                          label: LanguageHelper.t(
+                            "Password",
+                            "पासवर्ड",
+                            "पासवर्ड",
+                          ),
                           hint: "••••••••",
                           prefixIcon: Icons.lock_outline_rounded,
                           suffix: GestureDetector(

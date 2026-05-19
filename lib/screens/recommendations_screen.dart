@@ -8,6 +8,7 @@ import '../theme/app_theme.dart';
 import 'pose_detail_screen.dart';
 import 'breathing_detail_screen.dart';
 import 'routine_screen.dart';
+import '../Widgets/normal_language_switcher.dart';
 
 class RecommendationsScreen extends StatefulWidget {
   const RecommendationsScreen({super.key});
@@ -154,7 +155,7 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
               child: Text(name, style: AppTextStyles.heading3()),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(4, 8, 4, 10),
+              padding: const EdgeInsets.fromLTRB(8, 8, 8, 10),
               child: Wrap(
                 spacing: 8,
                 runSpacing: 6,
@@ -562,16 +563,26 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
                       ],
                     ),
                     const SizedBox(height: 14),
-                    Text(
-                      LanguageHelper.t(
-                        "AI-curated for your health goals",
-                        "AI द्वारे तुमच्या आरोग्य लक्ष्यांसाठी निवडले",
-                        "AI द्वारा आपके स्वास्थ्य लक्ष्यों के लिए चुना गया",
-                      ),
-                      style: GoogleFonts.inter(
-                        fontSize: 13,
-                        color: Colors.white.withOpacity(0.8),
-                      ),
+                    Row(
+                      children: [
+                        Text(
+                          LanguageHelper.t(
+                            "AI-curated for your health goals.",
+                            "AI द्वारे तुमच्या आरोग्य लक्ष्यांसाठी निवडले.",
+                            "AI द्वारा आपके स्वास्थ्य लक्ष्यों के लिए चुना गया",
+                          ),
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            color: Colors.white.withOpacity(0.8),
+                          ),
+                        ),
+                        const SizedBox(width: 3),
+                        NormalLanguageSwitcher(
+                          onLanguageChanged: () {
+                            setState(() {});
+                          },
+                        ),
+                      ],
                     ),
                   ],
                 ),

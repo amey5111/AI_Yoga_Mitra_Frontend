@@ -14,6 +14,7 @@ import 'breathing_detail_screen.dart';
 import 'welcome_screen.dart';
 import 'my_profile_screen.dart';
 import 'edit_routine_screen.dart';
+import '../Widgets/normal_language_switcher.dart';
 
 class RoutineScreen extends StatefulWidget {
   final Map<String, dynamic>? routine;
@@ -679,7 +680,7 @@ class _RoutineScreenState extends State<RoutineScreen> {
                               Text(
                                 getGreeting(),
                                 style: GoogleFonts.poppins(
-                                  fontSize: 30,
+                                  fontSize: 20,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -691,13 +692,24 @@ class _RoutineScreenState extends State<RoutineScreen> {
                                 ),
                                 style: GoogleFonts.inter(
                                   color: Colors.grey,
-                                  fontSize: 24,
+                                  fontSize: 14,
                                 ),
                               ),
                             ],
                           ),
                         ),
-                        profileMenu(),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            NormalLanguageSwitcher(
+                              onLanguageChanged: () {
+                                setState(() {});
+                              },
+                            ),
+                            const SizedBox(height: 10),
+                            profileMenu(),
+                          ],
+                        ),
                       ],
                     ),
                   ),
