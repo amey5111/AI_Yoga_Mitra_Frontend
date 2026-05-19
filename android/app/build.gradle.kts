@@ -22,8 +22,6 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
-
-        // ✅ FIXED (Kotlin DSL syntax)
         isCoreLibraryDesugaringEnabled = true
     }
 
@@ -52,13 +50,22 @@ android {
         getByName("release") {
             signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = true
-            isShrinkResources = true
+            isShrinkResources = false
+            proguardFiles(                                             // ← ADDED
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
+    }
+
+    bundle {
+        language  { enableSplit = false }
+        density   { enableSplit = false }
+        abi       { enableSplit = true  }
     }
 }
 
 dependencies {
-    // ✅ FIXED (Kotlin DSL syntax)
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
 }
 

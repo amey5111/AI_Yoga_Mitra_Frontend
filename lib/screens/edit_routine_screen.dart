@@ -2,18 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
-
 import '../providers/user_provider.dart';
 import '../services/api_service.dart';
 import '../utils/language_helper.dart';
+import '../theme/app_theme.dart';
 import 'pose_detail_screen.dart';
 import 'breathing_detail_screen.dart';
 
 class EditRoutineScreen extends StatefulWidget {
   final List<Map<String, dynamic>> routineSteps;
-
   const EditRoutineScreen({super.key, required this.routineSteps});
-
   @override
   State<EditRoutineScreen> createState() => _EditRoutineScreenState();
 }
@@ -23,9 +21,6 @@ class _EditRoutineScreenState extends State<EditRoutineScreen> {
   List<Map<String, dynamic>> _otherPoses = [];
   List<Map<String, dynamic>> _otherBreathing = [];
   bool _updating = false;
-
-  Color get purple => const Color(0xFF7C4DFF);
-  Color get purpleDark => const Color(0xFF5E35B1);
 
   String get langCode {
     switch (LanguageHelper.currentLanguage) {
@@ -39,7 +34,6 @@ class _EditRoutineScreenState extends State<EditRoutineScreen> {
   }
 
   String t(String en, String mr, String hn) => LanguageHelper.t(en, mr, hn);
-
   int _toInt(dynamic v) {
     if (v is int) return v;
     if (v is double) return v.toInt();
@@ -57,50 +51,35 @@ class _EditRoutineScreenState extends State<EditRoutineScreen> {
 
   void _buildOtherRecommendations() {
     final provider = Provider.of<UserProvider>(context, listen: false);
-
-    debugPrint("=== _buildOtherRecommendations called");
-    debugPrint("=== routineItems: ${_routineItems.length}");
-    debugPrint("=== provider.poseDetails: ${provider.poseDetails.length}");
-    debugPrint(
-      "=== provider.breathingDetails: ${provider.breathingDetails.length}",
-    );
-
     final Set<int> routineIds = _routineItems
         .map((e) => _toInt(e['id']))
         .toSet();
-
     _otherPoses = provider.poseDetails
         .where((p) => !routineIds.contains(_toInt(p['id'])))
         .map((p) {
-          final copy = Map<String, dynamic>.from(p);
-          copy['type'] = 'pose';
-          return copy;
+          final c = Map<String, dynamic>.from(p);
+          c['type'] = 'pose';
+          return c;
         })
         .toList();
-
     _otherBreathing = provider.breathingDetails
         .where((b) => !routineIds.contains(_toInt(b['id'])))
         .map((b) {
-          final copy = Map<String, dynamic>.from(b);
-          copy['type'] = 'breathing';
-          return copy;
+          final c = Map<String, dynamic>.from(b);
+          c['type'] = 'breathing';
+          return c;
         })
         .toList();
-
-    debugPrint("=== routineIds: $routineIds");
-    debugPrint("=== otherPoses: ${_otherPoses.length}");
-    debugPrint("=== otherBreathing: ${_otherBreathing.length}");
   }
 
   void _removeFromRoutine(int index) {
     final removed = Map<String, dynamic>.from(_routineItems[index]);
     setState(() {
       _routineItems.removeAt(index);
-      if (removed['type'] == 'breathing') {
+      if (removed['type'] == 'breathing')
         _otherBreathing.add(removed);
-      } else {
+      else
         _otherPoses.add(removed);
-      }
     });
   }
 
@@ -108,14 +87,12 @@ class _EditRoutineScreenState extends State<EditRoutineScreen> {
     final copy = Map<String, dynamic>.from(item);
     copy['type'] = isBreathing ? 'breathing' : 'pose';
     final itemId = _toInt(copy['id']);
-
     setState(() {
       _routineItems.add(copy);
-      if (isBreathing) {
+      if (isBreathing)
         _otherBreathing.removeWhere((b) => _toInt(b['id']) == itemId);
-      } else {
+      else
         _otherPoses.removeWhere((p) => _toInt(p['id']) == itemId);
-      }
     });
   }
 
@@ -125,78 +102,51 @@ class _EditRoutineScreenState extends State<EditRoutineScreen> {
         SnackBar(
           content: Text(
             t(
-              "Please add at least one item to your routine.",
-              "किमान एक आयटम दिनचर्येत जोडा.",
-              "कृपया कम से कम एक आइटम दिनचर्या में जोड़ें।",
+              "Add at least one item.",
+              "किमान एक योगा प्रकार जोडा.",
+              "कम से कम एक आइटम जोड़ें।",
             ),
           ),
         ),
       );
       return;
     }
-
     setState(() => _updating = true);
-
     final provider = Provider.of<UserProvider>(context, listen: false);
     final userId = provider.profile.userId;
-
     final poseIds = _routineItems
         .where((e) => e['type'] != 'breathing')
         .map<int>((e) => _toInt(e['id']))
         .where((id) => id != -1)
         .toList();
-
     final breathingIds = _routineItems
         .where((e) => e['type'] == 'breathing')
         .map<int>((e) => _toInt(e['id']))
         .where((id) => id != -1)
         .toList();
-
-    debugPrint("=== Updating: poseIds=$poseIds breathingIds=$breathingIds");
-
     try {
       final newRoutine = await ApiService.updateUserRoutine(
         userId,
         poseIds,
         breathingIds,
       );
-
-      debugPrint("=== newRoutine: $newRoutine");
-      debugPrint("=== newRoutine keys: ${newRoutine?.keys}");
-
       if (!mounted) return;
       setState(() => _updating = false);
-
-      if (newRoutine != null) {
-        // ── Pop back to RoutineScreen and pass the new routine as result ──
-        // RoutineScreen's editRoutine handler awaits this push and then
-        // calls _loadRoutine() which fetches fresh from DB
+      if (newRoutine != null)
         Navigator.pop(context, newRoutine);
-      } else {
+      else
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              t(
-                "Failed to update routine. Please try again.",
-                "दिनचर्या अपडेट करणे अयशस्वी. पुन्हा प्रयत्न करा.",
-                "दिनचर्या अपडेट करना विफल। कृपया पुनः प्रयास करें।",
-              ),
-            ),
+            content: Text(t("Update failed.", "अपडेट अयशस्वी.", "अपडेट विफल।")),
           ),
         );
-      }
     } catch (e) {
-      debugPrint("=== _updateRoutine error: $e");
       if (!mounted) return;
       setState(() => _updating = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            t(
-              "Something went wrong. Please try again.",
-              "काहीतरी चूक झाली. पुन्हा प्रयत्न करा.",
-              "कुछ गलत हो गया। कृपया पुनः प्रयास करें।",
-            ),
+            t("Something went wrong.", "काहीतरी चूक झाली.", "कुछ गलत हो गया।"),
           ),
         ),
       );
@@ -205,95 +155,97 @@ class _EditRoutineScreenState extends State<EditRoutineScreen> {
 
   String _formatDuration(Map<String, dynamic> item) {
     final secs = (item['duration'] ?? item['duration_seconds'] ?? 60) as num;
-    final mins = (secs / 60).round();
-    return "$mins ${t('mins', 'मिनिटे', 'मिनट')}";
+    return "${(secs / 60).round()} ${t('mins', 'मिनिटे', 'मिनट')}";
   }
 
   void _openVideo(String? url) async {
     if (url == null || url.isEmpty) return;
     final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
+    if (await canLaunchUrl(uri))
       await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
   }
-
-  // ── Widgets ───────────────────────────────────────────────────────────────
 
   Widget _buildRoutineItem(Map<String, dynamic> item, int index) {
     final name = item['name']?[langCode] ?? '';
-    final duration = _formatDuration(item);
-
+    final isBreathing = item['type'] == 'breathing';
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 6,
-            offset: const Offset(0, 3),
-          ),
-        ],
+        color: AppColors.bgCard,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: AppShadows.soft,
       ),
-      child: Row(
-        children: [
-          // Index circle
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(color: purple, shape: BoxShape.circle),
-            alignment: Alignment.center,
-            child: Text(
-              "${index + 1}",
-              style: GoogleFonts.poppins(
-                color: Colors.white,
-                fontWeight: FontWeight.w700,
-                fontSize: 14,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(
+          children: [
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                gradient: AppGradients.cardGradient,
+                shape: BoxShape.circle,
               ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          // Name + duration
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
+              child: Center(
+                child: Text(
+                  '${index + 1}',
                   style: GoogleFonts.poppins(
-                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
                     fontSize: 14,
                   ),
                 ),
-                Text(
-                  "${t('Duration', 'कालावधी', 'समय')} : $duration",
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    color: Colors.grey[600],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // Remove button
-          TextButton(
-            onPressed: () => _removeFromRoutine(index),
-            style: TextButton.styleFrom(
-              backgroundColor: purple,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
               ),
             ),
-            child: Text(
-              t("Remove", "काढा", "हटाएं"),
-              style: GoogleFonts.inter(fontSize: 12),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(name, style: AppTextStyles.bodyMedium()),
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      Icon(
+                        isBreathing
+                            ? Icons.air_rounded
+                            : Icons.self_improvement_rounded,
+                        size: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        _formatDuration(item),
+                        style: AppTextStyles.caption(),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+            GestureDetector(
+              onTap: () => _removeFromRoutine(index),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 7,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  t("Remove", "काढा", "हटाएं"),
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.redAccent,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -301,87 +253,75 @@ class _EditRoutineScreenState extends State<EditRoutineScreen> {
   Widget _buildRecommendationCard(Map<String, dynamic> item, bool isBreathing) {
     final name = item['name']?[langCode] ?? '';
     final secs = (item['duration_seconds'] ?? 60) as num;
-    final mins = (secs / 60).round();
-    final durationStr = "$mins ${t('mins', 'मिनिटे', 'मिनट')}";
-    final typeLabel = isBreathing
-        ? t("Breathing", "प्राणायाम", "श्वसन")
-        : t("Yoga", "योग", "योग");
+    final durationStr = "${(secs / 60).round()} ${t('mins', 'मिनिटे', 'मिनट')}";
     final reason = item['reason']?[langCode] ?? '';
     final imageUrl = ApiService.resolveImageUrl(item['image_url']);
     final video = item['video']?[langCode]?['youtube_url'];
 
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      elevation: 3,
-      clipBehavior: Clip.antiAlias,
+    return AppCard(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      padding: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Image
           if (imageUrl.isNotEmpty)
-            AspectRatio(
-              aspectRatio: 16 / 9,
-              child: Image.network(
-                imageUrl,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
-                  color: Colors.grey.shade200,
-                  child: const Icon(
-                    Icons.image_not_supported,
-                    color: Colors.grey,
+            ClipRRect(
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(18),
+              ),
+              child: AspectRatio(
+                aspectRatio: 16 / 9,
+                child: Image.network(
+                  imageUrl,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    color: AppColors.chipBg,
+                    child: const Icon(
+                      Icons.image_not_supported_rounded,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 ),
               ),
             ),
-
           Padding(
-            padding: const EdgeInsets.fromLTRB(14, 10, 14, 4),
-            child: Text(
-              name,
-              style: GoogleFonts.poppins(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 0, 14, 6),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
             child: Row(
               children: [
-                Text(
-                  typeLabel,
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    color: Colors.grey[600],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  "•",
-                  style: TextStyle(fontSize: 12, color: Colors.grey[400]),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  "${t('Duration', 'कालावधी', 'समय')} : $durationStr",
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    color: Colors.grey[600],
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(name, style: AppTextStyles.heading3()),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          AppChip(
+                            label: isBreathing
+                                ? t("Breathing", "प्राणायाम", "श्वसन")
+                                : t("Yoga", "योग", "योग"),
+                          ),
+                          const SizedBox(width: 8),
+                          AppChip(
+                            label: durationStr,
+                            icon: Icons.timer_outlined,
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
           ),
-
-          // Info / Video / Add to Routine row
           Padding(
-            padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+            padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
             child: Row(
               children: [
-                // Info
-                InkWell(
-                  onTap: () => Navigator.push(
+                _miniBtn(
+                  Icons.description_outlined,
+                  t("Info", "माहिती", "जानकारी"),
+                  () => Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (_) => isBreathing
@@ -389,106 +329,65 @@ class _EditRoutineScreenState extends State<EditRoutineScreen> {
                           : PoseDetailScreen(poseId: _toInt(item['id'])),
                     ),
                   ),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.description,
-                          size: 14,
-                          color: Colors.grey[700],
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          t("Info", "माहिती", "जानकारी"),
-                          style: GoogleFonts.inter(fontSize: 12),
-                        ),
-                      ],
-                    ),
-                  ),
                 ),
-
                 const SizedBox(width: 8),
-
-                // Video
-                InkWell(
-                  onTap: () => _openVideo(video),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.red.shade50,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.play_circle,
-                          size: 14,
-                          color: Colors.red,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          t("Video", "व्हिडिओ", "वीडियो"),
-                          style: GoogleFonts.inter(fontSize: 12),
-                        ),
-                      ],
-                    ),
-                  ),
+                _miniBtn(
+                  Icons.play_circle_outline_rounded,
+                  t("Video", "व्हिडिओ", "वीडियो"),
+                  () => _openVideo(video),
+                  isRed: true,
                 ),
-
                 const Spacer(),
-
-                // Add to Routine
                 ElevatedButton(
                   onPressed: () => _addToRoutine(item, isBreathing),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: purple,
+                    backgroundColor: AppColors.accent,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
+                      horizontal: 14,
                       vertical: 8,
                     ),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(10),
                     ),
                     elevation: 0,
                   ),
                   child: Text(
-                    t(
-                      "Add to Routine",
-                      "दिनचर्येत जोडा",
-                      "दिनचर्या में जोड़ें",
+                    t("Add", "जोडा", "जोड़ें"),
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
                     ),
-                    style: GoogleFonts.inter(fontSize: 12),
                   ),
                 ),
               ],
             ),
           ),
-
-          // Reason banner
           if (reason.isNotEmpty)
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              color: purple.withOpacity(0.07),
-              child: Text(
-                "${t('Best for you because:', 'तुमच्यासाठी सर्वोत्तम:', 'आपके लिए सर्वोत्तम:')} $reason",
-                style: GoogleFonts.inter(
-                  fontSize: 12,
-                  color: purpleDark,
-                  fontWeight: FontWeight.w500,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppColors.accent.withOpacity(0.07),
+                borderRadius: const BorderRadius.vertical(
+                  bottom: Radius.circular(18),
                 ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.auto_awesome_rounded,
+                    size: 14,
+                    color: AppColors.accent,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      reason,
+                      style: AppTextStyles.caption(color: AppColors.accent),
+                    ),
+                  ),
+                ],
               ),
             ),
         ],
@@ -496,148 +395,236 @@ class _EditRoutineScreenState extends State<EditRoutineScreen> {
     );
   }
 
+  Widget _miniBtn(
+    IconData icon,
+    String label,
+    VoidCallback onTap, {
+    bool isRed = false,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: isRed ? Colors.red.withOpacity(0.08) : AppColors.chipBg,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              size: 14,
+              color: isRed ? Colors.redAccent : AppColors.accent,
+            ),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: GoogleFonts.inter(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: isRed ? Colors.redAccent : AppColors.accent,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final hasOthers = _otherPoses.isNotEmpty || _otherBreathing.isNotEmpty;
-
     return Scaffold(
-      backgroundColor: Colors.grey.shade100,
-      appBar: AppBar(
-        title: Text(
-          t(
-            "Customize your Yoga Routine",
-            "तुमची योगा दिनचर्या सानुकूलित करा",
-            "अपनी योगा दिनचर्या अनुकूलित करें",
-          ),
-          style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
-        ),
-        backgroundColor: purple,
-        foregroundColor: Colors.white,
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.only(top: 12, bottom: 16),
-              children: [
-                // ── Current routine items ────────────────────────────
-                if (_routineItems.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Center(
-                      child: Text(
-                        t(
-                          "Your routine is empty.\nAdd poses from below.",
-                          "तुमची दिनचर्या रिकामी आहे.\nखाली पोझेस जोडा.",
-                          "आपकी दिनचर्या खाली है।\nनीचे से जोड़ें।",
-                        ),
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.inter(
-                          color: Colors.grey,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-                  )
-                else
-                  for (int i = 0; i < _routineItems.length; i++)
-                    _buildRoutineItem(_routineItems[i], i),
-
-                // ── Other recommendations ────────────────────────────
-                if (hasOthers) ...[
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+      body: Container(
+        decoration: const BoxDecoration(gradient: AppGradients.softBg),
+        child: SafeArea(
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+                decoration: const BoxDecoration(
+                  gradient: AppGradients.welcomeBg,
+                  borderRadius: BorderRadius.only(
+                    bottomLeft: Radius.circular(32),
+                    bottomRight: Radius.circular(32),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
                       children: [
-                        const Text("✨ ", style: TextStyle(fontSize: 18)),
-                        Expanded(
-                          child: Text(
-                            t(
-                              "Other Yoga and Breathing Techniques recommended for you",
-                              "तुमच्यासाठी सुचवलेले इतर योगासने आणि प्राणायाम",
-                              "आपके लिए सुझाई गई अन्य योगासन और श्वसन तकनीकें",
+                        GestureDetector(
+                          onTap: () => Navigator.pop(context),
+                          child: Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              shape: BoxShape.circle,
                             ),
-                            style: GoogleFonts.poppins(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 15,
-                              color: purpleDark,
+                            child: const Icon(
+                              Icons.arrow_back_rounded,
+                              color: Colors.white,
+                              size: 20,
                             ),
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Text(
+                          t(
+                            "Customize Routine",
+                            "दिनचर्या सानुकूलित करा",
+                            "दिनचर्या अनुकूलित करें",
+                          ),
+                          style: GoogleFonts.poppins(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
                           ),
                         ),
                       ],
                     ),
-                  ),
-                  for (var p in _otherPoses) _buildRecommendationCard(p, false),
-                  for (var b in _otherBreathing)
-                    _buildRecommendationCard(b, true),
-                ] else if (_routineItems.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Center(
-                      child: Text(
-                        t(
-                          "All recommendations are in your routine!",
-                          "सर्व शिफारसी तुमच्या दिनचर्येत आहेत!",
-                          "सभी सिफारिशें आपकी दिनचर्या में हैं!",
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 7,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(99),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.list_alt_rounded,
+                                color: Colors.white,
+                                size: 16,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                '${_routineItems.length} ${t("items", "योगा प्रकार", "आइटम")}',
+                                style: GoogleFonts.inter(
+                                  color: Colors.white,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.inter(
-                          color: purpleDark,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
+                      ],
                     ),
-                  ),
-
-                const SizedBox(height: 80),
-              ],
-            ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.only(top: 12, bottom: 100),
+                  children: [
+                    if (_routineItems.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.all(32),
+                        child: Column(
+                          children: [
+                            const Icon(
+                              Icons.playlist_add_rounded,
+                              size: 48,
+                              color: AppColors.textSecondary,
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              t(
+                                "Your routine is empty.\nAdd poses from below.",
+                                "तुमची दिनचर्या रिकामी आहे.\nखाली पोझेस जोडा.",
+                                "आपकी दिनचर्या खाली है।\nनीचे से जोड़ें।",
+                              ),
+                              textAlign: TextAlign.center,
+                              style: AppTextStyles.body(
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    else
+                      for (int i = 0; i < _routineItems.length; i++)
+                        _buildRoutineItem(_routineItems[i], i),
+                    if (hasOthers) ...[
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 20, 16, 12),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.auto_awesome_rounded,
+                              color: AppColors.accent,
+                              size: 18,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                t(
+                                  "Other Recommendations For You",
+                                  "तुमच्यासाठी सुचवलेले इतर",
+                                  "आपके लिए अन्य सुझाव",
+                                ),
+                                style: AppTextStyles.heading3(),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      for (var p in _otherPoses)
+                        _buildRecommendationCard(p, false),
+                      for (var b in _otherBreathing)
+                        _buildRecommendationCard(b, true),
+                    ] else if (_routineItems.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Center(
+                          child: AppChip(
+                            label: t(
+                              "All recommendations added!",
+                              "सर्व शिफारसी जोडल्या!",
+                              "सभी सिफारिशें जोड़ी गईं!",
+                            ),
+                            selected: true,
+                            icon: Icons.check_rounded,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
-
-      // ── Sticky Update Routine button ──────────────────────────────
       bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-          child: SizedBox(
-            width: double.infinity,
-            height: 52,
-            child: ElevatedButton.icon(
-              icon: _updating
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Text("✨", style: TextStyle(fontSize: 18)),
-              label: Text(
-                _updating
-                    ? t("Updating...", "अपडेट होत आहे...", "अपडेट हो रहा है...")
-                    : t(
-                        "Update Routine",
-                        "दिनचर्या अपडेट करा",
-                        "दिनचर्या अपडेट करें",
-                      ),
-                style: GoogleFonts.poppins(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
+          decoration: BoxDecoration(
+            color: AppColors.bgCard,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.07),
+                blurRadius: 20,
+                offset: const Offset(0, -4),
               ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: purple,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                elevation: 2,
-              ),
-              onPressed: _updating ? null : _updateRoutine,
-            ),
+            ],
+          ),
+          child: AppPrimaryButton(
+            label: _updating
+                ? t("Updating...", "अपडेट होत आहे...", "अपडेट हो रहा है...")
+                : t(
+                    "✨ Update Routine",
+                    "✨ दिनचर्या अपडेट करा",
+                    "✨ दिनचर्या अपडेट करें",
+                  ),
+            onPressed: _updating ? null : _updateRoutine,
+            loading: _updating,
           ),
         ),
       ),

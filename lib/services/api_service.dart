@@ -3,8 +3,11 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://192.168.1.7:5000/api';
-  static const String rootUrl = 'http://192.168.1.7:5000';
+  // static const String baseUrl = 'http://10.10.127.165:5000/api';
+  // static const String rootUrl = 'http://10.10.127.165:5000';
+
+  static const String baseUrl = 'https://yoga-mitra-backend.onrender.com/api';
+  static const String rootUrl = 'https://yoga-mitra-backend.onrender.com/';
 
   // ── Deep convert any nested structure to plain Dart maps/lists ────────────
   static dynamic _deepConvert(dynamic value) {
