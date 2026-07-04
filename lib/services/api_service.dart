@@ -230,4 +230,27 @@ class ApiService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
   }
+
+  /* ---------------------------------------------------------
+     POSE DETECTION AND CORRECTION AND PROGRESS TRACKING ADDITION
+  ---------------------------------------------------------- */
+  static Future<void> savePoseSession(Map<String, dynamic> data) async {
+    await http.post(
+      Uri.parse('$baseUrl/pose-tracking/session'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(data),
+    );
+  }
+
+  static Future<List<dynamic>> getUserSessions(String userId) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/pose-tracking/user/$userId'),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+
+    return [];
+  }
 }

@@ -7,6 +7,7 @@
     <!-- ═══════════════════════════════════════════════════════════════ -->
 
     <!-- Internet (existing) -->
+    <uses-permission android:name="android.permission.CAMERA"/>
     <uses-permission android:name="android.permission.INTERNET"/>
 
     <!-- Show notifications (Android 13+) -->
@@ -36,7 +37,8 @@
     <application
         android:label="Yoga Mitra"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:requestLegacyExternalStorage="true">
 
         <!-- ── Main Activity (unchanged) ────────────────────────────── -->
         <activity
