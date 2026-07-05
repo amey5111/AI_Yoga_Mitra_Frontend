@@ -16,19 +16,62 @@ import 'my_profile_screen.dart';
 import 'edit_routine_screen.dart';
 import '../Widgets/normal_language_switcher.dart';
 import 'pose_detection_screen.dart';
+import 'yoga_gpt_screen.dart';
+import 'diet_screen.dart';
+import '../theme/app_theme.dart';
 
 class RoutineScreen extends StatefulWidget {
   final Map<String, dynamic>? routine;
-  const RoutineScreen({super.key, this.routine});
+
+  /// When hosted inside the bottom-nav shell, [embedded] is true (hides the
+  /// FAB and lets the shell own navigation). [onSwitchTab] jumps to another
+  /// tab (e.g. Recommendations) from the home screen.
+  final bool embedded;
+  final void Function(int tabIndex)? onSwitchTab;
+
+  const RoutineScreen({
+    super.key,
+    this.routine,
+    this.embedded = false,
+    this.onSwitchTab,
+  });
 
   @override
-  State<RoutineScreen> createState() => _RoutineScreenState();
+  State<RoutineScreen> createState() => RoutineScreenState();
 }
 
-class _RoutineScreenState extends State<RoutineScreen> {
+class RoutineScreenState extends State<RoutineScreen> {
   bool loading = true;
   bool _forceRefresh = false;
   List<Map<String, dynamic>> routineSteps = [];
+
+  /// Public reload used by the shell after a routine is generated elsewhere.
+  Future<void> reload() async {
+    if (!mounted) return;
+    setState(() {
+      loading = true;
+      routineSteps = [];
+      _forceRefresh = true;
+    });
+    await _loadRoutine();
+  }
+
+  Future<void> _openEditRoutine() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EditRoutineScreen(routineSteps: routineSteps),
+      ),
+    );
+    if (mounted) {
+      setState(() {
+        loading = true;
+        routineSteps = [];
+        _forceRefresh = true;
+      });
+      _loadRoutine();
+    }
+  }
 
   Color get purple => const Color(0xFF7C4DFF);
   Color get purpleDark => const Color(0xFF5E35B1);
@@ -90,6 +133,13 @@ class _RoutineScreenState extends State<RoutineScreen> {
               breathing: savedBreathing,
             );
           }
+          // Hydrate persisted health profile + medical report
+          provider.hydrateFromHealthProfile(
+            (fullData['healthProfile'] as Map?)?.cast<String, dynamic>(),
+          );
+          provider.setMedicalReport(
+            (fullData['medicalReport'] as Map?)?.cast<String, dynamic>(),
+          );
           routineObject = fullData['routine'] as Map<String, dynamic>?;
         }
       } else {
@@ -655,6 +705,13 @@ class _RoutineScreenState extends State<RoutineScreen> {
           }
         }
 
+        if (value == 'dietPlan') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const DietScreen()),
+          );
+        }
+
         if (value == 'logout') {
           // Cancel this user's notifications on logout
           // but keep their saved reminder data for when they log back in
@@ -693,6 +750,10 @@ class _RoutineScreenState extends State<RoutineScreen> {
           ),
         ),
         PopupMenuItem(
+          value: 'dietPlan',
+          child: Text(t('Diet Plan 🥗', 'आहार योजना 🥗', 'डाइट प्लान 🥗')),
+        ),
+        PopupMenuItem(
           value: 'logout',
           child: Text(t('Logout', 'लॉगआउट', 'लॉगआउट')),
         ),
@@ -702,6 +763,7 @@ class _RoutineScreenState extends State<RoutineScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final provider = Provider.of<UserProvider>(context, listen: false);
     final totalSeconds = routineSteps.fold<int>(
       0,
       (sum, e) => sum + _toInt(e['duration'] ?? 0),
@@ -709,133 +771,244 @@ class _RoutineScreenState extends State<RoutineScreen> {
     final totalMinutes = (totalSeconds / 60).round();
 
     return Scaffold(
-      backgroundColor: Colors.grey.shade100,
-      body: SafeArea(
-        child: loading
-            ? const Center(child: CircularProgressIndicator())
-            : Column(
-                children: [
-                  // ── HEADER ─────────────────────────────────────────────
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 18,
+      backgroundColor: AppColors.bgLight,
+      floatingActionButton: widget.embedded
+          ? null
+          : FloatingActionButton.extended(
+              heroTag: 'yogagpt_fab',
+              backgroundColor: purpleDark,
+              foregroundColor: Colors.white,
+              icon: const Icon(Icons.smart_toy_rounded),
+              label: Text(
+                'YogaGPT',
+                style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+              ),
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const YogaGptScreen()),
+              ),
+            ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      body: loading
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
+              children: [
+                // ── GRADIENT HEADER CARD ────────────────────────────────
+                Container(
+                  decoration: const BoxDecoration(
+                    gradient: AppGradients.welcomeBg,
+                    borderRadius: BorderRadius.only(
+                      bottomLeft: Radius.circular(28),
+                      bottomRight: Radius.circular(28),
                     ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Color(0x338B84F8),
+                        blurRadius: 18,
+                        offset: Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: SafeArea(
+                    bottom: false,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(18, 12, 12, 18),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
                             children: [
-                              Text(
-                                getGreeting(),
-                                style: GoogleFonts.poppins(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      getGreeting(),
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      provider.profile.name.isNotEmpty
+                                          ? provider.profile.name
+                                          : t(
+                                              'Welcome !',
+                                              'आपले स्वागत आहे!',
+                                              'आपका स्वागत है!',
+                                            ),
+                                      style: GoogleFonts.inter(
+                                        color: Colors.white.withOpacity(0.85),
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                              Text(
-                                t(
-                                  'Welcome !',
-                                  'आपले स्वागत आहे!',
-                                  'आपका स्वागत है!',
-                                ),
-                                style: GoogleFonts.inter(
-                                  color: Colors.grey,
-                                  fontSize: 14,
-                                ),
+                              NormalLanguageSwitcher(
+                                onLanguageChanged: () => setState(() {}),
+                              ),
+                              const SizedBox(width: 8),
+                              _homeAvatar(provider.profile.name),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          // Today summary chips
+                          Row(
+                            children: [
+                              _summaryChip(
+                                Icons.self_improvement_rounded,
+                                '${routineSteps.length}',
+                                t('Steps', 'पायऱ्या', 'चरण'),
+                              ),
+                              const SizedBox(width: 10),
+                              _summaryChip(
+                                Icons.timer_outlined,
+                                '$totalMinutes',
+                                t('Minutes', 'मिनिटे', 'मिनट'),
+                              ),
+                              const SizedBox(width: 10),
+                              _summaryChip(
+                                Icons.local_fire_department_rounded,
+                                routineSteps.isEmpty ? '—' : '${(totalMinutes * 4)}',
+                                t('Kcal', 'कॅलरी', 'कैलोरी'),
                               ),
                             ],
                           ),
-                        ),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            NormalLanguageSwitcher(
-                              onLanguageChanged: () {
-                                setState(() {});
-                              },
-                            ),
-                            const SizedBox(height: 10),
-                            profileMenu(),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Text(
-                      t(
-                        'Start Your todays day with Yoga, to get energetic life ahead.',
-                        'पुढील आयुष्य उत्साहाने भरण्यासाठी आजच्या दिवसाची सुरुवात योगाभ्यासाने करा.',
-                        'आपकी जिंदगी उत्साह से भरने हेतु अपने दिन की शुरुआत योगाभ्यास से करें।',
+                        ],
                       ),
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.inter(color: Colors.grey),
                     ),
                   ),
+                ),
 
-                  const SizedBox(height: 20),
-
-                  // ── ROUTINE TITLE ───────────────────────────────────────
-                  Text(
-                    t(
-                      'Your Yoga Routine',
-                      'तुमची योगा दिनचर्या',
-                      'आपकी योगा दिनचर्या',
-                    ),
-                    style: GoogleFonts.poppins(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  Text(
-                    '(${t("Total time", "एकूण वेळ", "कुल समय")} : $totalMinutes ${t("Min", "मिनिटे", "मिनट")})',
-                    style: GoogleFonts.poppins(
-                      color: purple,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-
-                  const SizedBox(height: 10),
-
-                  // ── ROUTINE LIST ────────────────────────────────────────
-                  Expanded(
-                    child: routineSteps.isEmpty
-                        ? Center(
-                            child: Padding(
-                              padding: const EdgeInsets.all(24),
-                              child: Text(
-                                t(
-                                  'No routine yet.\nGo to Recommendations to generate one.',
-                                  'अद्याप दिनचर्या नाही.\nशिफारसींमध्ये जाऊन तयार करा.',
-                                  'अभी तक कोई दिनचर्या नहीं।\nसिफारिशें देखकर बनाएं।',
-                                ),
-                                textAlign: TextAlign.center,
-                                style: GoogleFonts.inter(
-                                  color: Colors.grey,
-                                  fontSize: 14,
+                // ── QUICK ACCESS ────────────────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
+                  child: Row(
+                    children: [
+                      _quickCard(
+                        Icons.auto_awesome_rounded,
+                        t('Recommend', 'शिफारसी', 'सिफारिश'),
+                        const Color(0xFF6C63FF),
+                        () => widget.onSwitchTab?.call(1),
+                      ),
+                      const SizedBox(width: 10),
+                      _quickCard(
+                        Icons.restaurant_rounded,
+                        t('Diet', 'आहार', 'डाइट'),
+                        const Color(0xFF34C759),
+                        () => widget.embedded
+                            ? widget.onSwitchTab?.call(2)
+                            : Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const DietScreen(),
                                 ),
                               ),
-                            ),
-                          )
-                        : ListView.builder(
-                            itemCount: routineSteps.length,
-                            itemBuilder: (context, index) =>
-                                routineCard(routineSteps[index], index),
+                      ),
+                      const SizedBox(width: 10),
+                      _quickCard(
+                        Icons.smart_toy_rounded,
+                        'YogaGPT',
+                        const Color(0xFFFF9500),
+                        () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const YogaGptScreen(),
                           ),
+                        ),
+                      ),
+                    ],
                   ),
+                ),
 
-                  // ── BOTTOM BUTTONS ──────────────────────────────────────
-                  Padding(
-                    padding: const EdgeInsets.all(16),
+                // ── ROUTINE TITLE ───────────────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 14, 20, 4),
+                  child: Row(
+                    children: [
+                      Text(
+                        t(
+                          'Your Yoga Routine',
+                          'तुमची योगा दिनचर्या',
+                          'आपकी योगा दिनचर्या',
+                        ),
+                        style: GoogleFonts.poppins(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const Spacer(),
+                      if (routineSteps.isNotEmpty) ...[
+                        GestureDetector(
+                          onTap: _openEditRoutine,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.chipBg,
+                              borderRadius: BorderRadius.circular(99),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.edit_rounded,
+                                    size: 14, color: AppColors.accent),
+                                const SizedBox(width: 5),
+                                Text(
+                                  t('Edit', 'संपादन', 'संपादित'),
+                                  style: GoogleFonts.poppins(
+                                    color: AppColors.accent,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+
+                // ── ROUTINE LIST ────────────────────────────────────────
+                Expanded(
+                  child: routineSteps.isEmpty
+                      ? _emptyState()
+                      : ListView.builder(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          itemCount: routineSteps.length,
+                          itemBuilder: (context, index) =>
+                              routineCard(routineSteps[index], index),
+                        ),
+                ),
+
+                // ── BOTTOM BUTTONS ──────────────────────────────────────
+                SafeArea(
+                  top: false,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
                     child: Row(
                       children: [
                         Expanded(
                           child: OutlinedButton.icon(
-                            icon: const Icon(Icons.alarm),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              side: const BorderSide(
+                                color: AppColors.accent,
+                                width: 1.5,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            icon: const Icon(Icons.alarm_rounded),
                             label: Text(
                               t(
                                 'Set Reminder',
@@ -843,32 +1016,231 @@ class _RoutineScreenState extends State<RoutineScreen> {
                                 'रिमाइंडर सेट करें',
                               ),
                             ),
-                            // ✅ FIXED: calls _handleSetReminderTap which
-                            //    checks permissions via ReminderService only —
-                            //    no FlutterLocalNotificationsPlugin instantiated here
                             onPressed: _handleSetReminderTap,
                           ),
                         ),
-                        const SizedBox(width: 16),
+                        const SizedBox(width: 14),
                         Expanded(
                           child: ElevatedButton.icon(
                             style: ElevatedButton.styleFrom(
                               backgroundColor: purple,
                               foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
                             ),
-                            icon: const Icon(Icons.play_arrow),
-                            label: Text(t('Start', 'सुरू करा', 'शुरू करें')),
-                            onPressed: () {
-                              // your existing start logic here
-                            },
+                            icon: Icon(
+                              routineSteps.isEmpty
+                                  ? Icons.auto_awesome_rounded
+                                  : Icons.play_arrow_rounded,
+                            ),
+                            label: Text(
+                              routineSteps.isEmpty
+                                  ? t('Generate', 'तयार करा', 'बनाएं')
+                                  : t('Start', 'सुरू करा', 'शुरू करें'),
+                            ),
+                            // When there's no routine yet, this takes the user
+                            // to the Explore (Recommendations) tab to build one;
+                            // otherwise it starts live pose practice.
+                            onPressed: routineSteps.isEmpty
+                                ? () => widget.onSwitchTab?.call(1)
+                                : () {
+                                    // Launch pose detection for the first yoga pose
+                                    final firstPose = routineSteps.firstWhere(
+                                      (s) => s['type'] != 'breathing',
+                                      orElse: () => {},
+                                    );
+                                    if (firstPose.isNotEmpty) {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => PoseDetectionScreen(
+                                            poseId: _toInt(firstPose['id']),
+                                            poseName:
+                                                firstPose['name']?['en'] ?? '',
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  },
                           ),
                         ),
                       ],
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
+            ),
+    );
+  }
+
+  // ── Home helper widgets ────────────────────────────────────────────────
+  Widget _homeAvatar(String name) {
+    final initials = name.isNotEmpty
+        ? name.trim().split(' ').take(2).map((e) => e[0].toUpperCase()).join()
+        : '?';
+    return GestureDetector(
+      onTap: () => widget.onSwitchTab?.call(3),
+      child: Container(
+        width: 42,
+        height: 42,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white.withOpacity(0.22),
+          border: Border.all(color: Colors.white.withOpacity(0.5), width: 1.5),
+        ),
+        child: Center(
+          child: Text(
+            initials,
+            style: GoogleFonts.poppins(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+            ),
+          ),
+        ),
       ),
     );
+  }
+
+  Widget _summaryChip(IconData icon, String value, String label) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.16),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white.withOpacity(0.25)),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: Colors.white, size: 20),
+            const SizedBox(height: 4),
+            Text(
+              value,
+              style: GoogleFonts.poppins(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
+            ),
+            Text(
+              label,
+              style: GoogleFonts.inter(
+                fontSize: 11,
+                color: Colors.white.withOpacity(0.8),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _quickCard(
+    IconData icon,
+    String label,
+    Color color,
+    VoidCallback onTap,
+  ) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 6),
+          decoration: BoxDecoration(
+            color: AppColors.bgCard,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: AppShadows.soft,
+          ),
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: color, size: 22),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _emptyState() {
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: constraints.maxHeight),
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+            Container(
+              padding: const EdgeInsets.all(22),
+              decoration: BoxDecoration(
+                color: AppColors.chipBg,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.self_improvement_rounded,
+                size: 52,
+                color: AppColors.accent,
+              ),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              t(
+                'No routine yet',
+                'अद्याप दिनचर्या नाही',
+                'अभी तक कोई दिनचर्या नहीं',
+              ),
+              style: AppTextStyles.heading3(),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              t(
+                'Get AI recommendations and build your\npersonalized yoga routine.',
+                'AI शिफारसी घ्या आणि तुमची योगा दिनचर्या तयार करा.',
+                'AI सिफारिशें लेकर अपनी योगा दिनचर्या बनाएं.',
+              ),
+              textAlign: TextAlign.center,
+              style: AppTextStyles.caption(),
+            ),
+            const SizedBox(height: 20),
+            AppPrimaryButton(
+              label: t(
+                'Get Recommendations',
+                'शिफारसी मिळवा',
+                'सिफारिशें पाएं',
+              ),
+              icon: Icons.auto_awesome_rounded,
+              width: 240,
+              onPressed: () => widget.onSwitchTab?.call(1),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
   }
 }

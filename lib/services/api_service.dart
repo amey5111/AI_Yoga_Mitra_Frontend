@@ -253,4 +253,114 @@ class ApiService {
 
     return [];
   }
+
+  /* ---------------------------------------------------------
+     MEDICAL REPORT ANALYSIS (AI/OCR)
+  ---------------------------------------------------------- */
+  static Future<Map<String, dynamic>> analyzeHealthReport({
+    required String fileBase64,
+    required String mimeType,
+    required String language,
+  }) async {
+    final resp = await http
+        .post(
+          Uri.parse('$baseUrl/health-report/analyze'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'fileBase64': fileBase64,
+            'mimeType': mimeType,
+            'language': language,
+          }),
+        )
+        .timeout(const Duration(seconds: 150));
+
+    final data = jsonDecode(resp.body);
+    if (resp.statusCode == 200) {
+      return _deepConvert(data) as Map<String, dynamic>;
+    }
+    throw Exception(data['message'] ?? 'Report analysis failed');
+  }
+
+  /* ---------------------------------------------------------
+     YOGAGPT CHAT
+  ---------------------------------------------------------- */
+  static Future<String> yogaGptChat(
+    List<Map<String, String>> messages,
+    String language,
+  ) async {
+    final resp = await http
+        .post(
+          Uri.parse('$baseUrl/chat'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'messages': messages, 'language': language}),
+        )
+        .timeout(const Duration(seconds: 90));
+
+    if (resp.statusCode == 200) {
+      final data = jsonDecode(resp.body);
+      return (data['reply'] ?? '').toString();
+    }
+    throw Exception('Chat failed');
+  }
+
+  /* ---------------------------------------------------------
+     DIET RECOMMENDATION
+  ---------------------------------------------------------- */
+  static Future<Map<String, dynamic>?> dietRecommend({
+    required Map<String, dynamic> userProfile,
+    required Map<String, dynamic> healthInfo,
+    required Map<String, dynamic> goals,
+    required String language,
+    String reportSummary = '',
+    List<String> reportConditions = const [],
+  }) async {
+    final resp = await http
+        .post(
+          Uri.parse('$baseUrl/diet/recommend'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'userProfile': userProfile,
+            'healthInfo': healthInfo,
+            'goals': goals,
+            'language': language,
+            'reportSummary': reportSummary,
+            'reportConditions': reportConditions,
+          }),
+        )
+        .timeout(const Duration(seconds: 120));
+
+    if (resp.statusCode == 200) {
+      return _deepConvert(jsonDecode(resp.body)) as Map<String, dynamic>;
+    }
+    return null;
+  }
+
+  /* ---------------------------------------------------------
+     HEALTH PROFILE + MEDICAL REPORT PERSISTENCE
+  ---------------------------------------------------------- */
+  static Future<void> saveHealthProfile(
+    String userId,
+    Map<String, dynamic> healthProfile,
+  ) async {
+    await http.put(
+      Uri.parse('$baseUrl/user/$userId/health'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(healthProfile),
+    );
+  }
+
+  static Future<void> saveMedicalReport(
+    String userId,
+    Map<String, dynamic> report,
+  ) async {
+    await http.put(
+      Uri.parse('$baseUrl/user/$userId/report'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(report),
+    );
+  }
+
+  static Future<void> deleteMedicalReport(String userId) async {
+    await http.delete(Uri.parse('$baseUrl/user/$userId/report'));
+  }
 }

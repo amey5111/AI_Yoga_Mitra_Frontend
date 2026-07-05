@@ -5,6 +5,7 @@ import '../services/api_service.dart';
 import '../utils/language_helper.dart';
 import '../theme/app_theme.dart';
 import '../widgets/normal_language_switcher.dart';
+import 'breathing_guide_screen.dart';
 
 class BreathingDetailScreen extends StatefulWidget {
   final int id;
@@ -123,6 +124,46 @@ class _BreathingDetailScreenState extends State<BreathingDetailScreen> {
                 ),
               ),
           ],
+        ),
+      ),
+    );
+  }
+
+  /// Parse "inhale 4 / hold 7 / exhale 8" style patterns from the technique
+  /// data and open the audio-guided breathing counter.
+  void _openGuidedBreathing(Map<String, dynamic> tech) {
+    int inhaleSec = 4, holdSec = 0, exhaleSec = 6;
+
+    final patternRaw = tech['breathing_pattern']?['en'];
+    final patternText = patternRaw is List
+        ? patternRaw.join(' ')
+        : (patternRaw ?? '').toString();
+
+    final numbers = RegExp(r'\d+')
+        .allMatches(patternText)
+        .map((m) => int.parse(m.group(0)!))
+        .where((n) => n > 0 && n <= 20)
+        .toList();
+
+    if (numbers.length >= 3) {
+      inhaleSec = numbers[0];
+      holdSec = numbers[1];
+      exhaleSec = numbers[2];
+    } else if (numbers.length == 2) {
+      inhaleSec = numbers[0];
+      exhaleSec = numbers[1];
+    }
+
+    final name = (technique?['name']?[langCode] ?? '').toString();
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => BreathingGuideScreen(
+          techniqueName: name,
+          inhaleSeconds: inhaleSec,
+          holdSeconds: holdSec,
+          exhaleSeconds: exhaleSec,
         ),
       ),
     );
@@ -544,6 +585,20 @@ class _BreathingDetailScreenState extends State<BreathingDetailScreen> {
                   t['time_of_practice']?[langCode],
                 ),
                 const SizedBox(height: 16),
+                // ── Audio-guided breathing session ──────────────────────
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: AppPrimaryButton(
+                    label: LanguageHelper.t(
+                      "🎧 Guided Breathing",
+                      "🎧 मार्गदर्शित श्वसन",
+                      "🎧 निर्देशित श्वास",
+                    ),
+                    icon: Icons.spatial_audio_off_rounded,
+                    onPressed: () => _openGuidedBreathing(t),
+                  ),
+                ),
+                const SizedBox(height: 12),
                 if (t['video'] != null)
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),

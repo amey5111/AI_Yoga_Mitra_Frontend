@@ -9,7 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'providers/user_provider.dart';
 import 'screens/welcome_screen.dart';
-import 'screens/routine_screen.dart';
+import 'screens/main_shell.dart';
 import 'services/api_service.dart';
 import 'services/reminder_service.dart'; // ✅ ADD THIS IMPORT
 import 'models/user_profile.dart';
@@ -86,18 +86,26 @@ class _YogaMitraAppState extends State<YogaMitraApp> {
           breathing: savedBreathing,
         );
 
+        // Hydrate persisted health profile + medical report
+        provider.hydrateFromHealthProfile(
+          (data['healthProfile'] as Map?)?.cast<String, dynamic>(),
+        );
+        provider.setMedicalReport(
+          (data['medicalReport'] as Map?)?.cast<String, dynamic>(),
+        );
+
         final routinePayload = data['routine'] as Map<String, dynamic>?;
         if (mounted) {
           setState(() {
-            startScreen = RoutineScreen(
-              routine: routinePayload ?? {'routine': []},
+            startScreen = MainShell(
+              initialRoutine: routinePayload ?? {'routine': []},
             );
           });
         }
       } else {
         if (mounted) {
           setState(() {
-            startScreen = RoutineScreen(routine: {'routine': []});
+            startScreen = const MainShell(initialRoutine: {'routine': []});
           });
         }
       }

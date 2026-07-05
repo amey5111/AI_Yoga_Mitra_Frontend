@@ -5,7 +5,8 @@ import '../providers/user_provider.dart';
 import '../models/goals.dart';
 import '../utils/language_helper.dart';
 import '../theme/app_theme.dart';
-import 'recommendations_screen.dart';
+import 'main_shell.dart';
+import '../services/api_service.dart';
 import '../widgets/language_switcher.dart';
 
 class GoalsScreen extends StatefulWidget {
@@ -104,16 +105,33 @@ class _GoalsScreenState extends State<GoalsScreen> {
   }
 
   void finish() {
-    Provider.of<UserProvider>(context, listen: false).setGoals(
+    final provider = Provider.of<UserProvider>(context, listen: false);
+    provider.setGoals(
       Goals(
         routineDuration: routineDuration,
         focusBodyParts: painAreas,
         tags: goalsList,
       ),
     );
-    Navigator.pushReplacement(
+
+    // Persist the full health profile so it survives across sessions
+    if (provider.profile.userId.isNotEmpty) {
+      ApiService.saveHealthProfile(provider.profile.userId, {
+        'height': provider.healthInfo.height,
+        'weight': provider.healthInfo.weight,
+        'activityLevel': level,
+        'medicalConditions': provider.healthInfo.medicalConditions,
+        'focusBodyParts': painAreas,
+        'goalTags': goalsList,
+        'routineDuration': routineDuration,
+      });
+    }
+
+    // End onboarding at the shell, opening the Explore (Recommendations) tab
+    Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute(builder: (_) => const RecommendationsScreen()),
+      MaterialPageRoute(builder: (_) => const MainShell(initialIndex: 1)),
+      (route) => false,
     );
   }
 

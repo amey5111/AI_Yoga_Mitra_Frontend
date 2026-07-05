@@ -11,7 +11,13 @@ import 'routine_screen.dart';
 import '../Widgets/normal_language_switcher.dart';
 
 class RecommendationsScreen extends StatefulWidget {
-  const RecommendationsScreen({super.key});
+  final bool embedded;
+  final void Function(int tabIndex)? onSwitchTab;
+  const RecommendationsScreen({
+    super.key,
+    this.embedded = false,
+    this.onSwitchTab,
+  });
   @override
   State<RecommendationsScreen> createState() => _RecommendationsScreenState();
 }
@@ -48,7 +54,22 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
   @override
   void initState() {
     super.initState();
-    _loadRecommendations();
+    if (widget.embedded) {
+      // Show already-saved recommendations; only call the AI when the user
+      // has none yet (first run) or taps refresh — never on every app open.
+      final provider = Provider.of<UserProvider>(context, listen: false);
+      if (provider.poseDetails.isNotEmpty ||
+          provider.breathingDetails.isNotEmpty) {
+        poseDetails = List<Map<String, dynamic>>.from(provider.poseDetails);
+        breathingDetails =
+            List<Map<String, dynamic>>.from(provider.breathingDetails);
+        loading = false;
+      } else {
+        _loadRecommendations();
+      }
+    } else {
+      _loadRecommendations();
+    }
   }
 
   Future<void> _loadRecommendations() async {
@@ -436,60 +457,83 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
             ),
           ),
           for (var item in breathingDetails) _breathingCard(item),
-          const SizedBox(height: 20),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: AppPrimaryButton(
-              label: LanguageHelper.t(
-                "🧘 Generate Yoga Routine",
-                "🧘 योगा दिनचर्या तयार करा",
-                "🧘 योगा दिनचर्या बनाएं",
-              ),
-              icon: Icons.playlist_add_check_rounded,
-              onPressed: () async {
-                try {
-                  setState(() => loading = true);
-                  final poseIds = poseDetails.map<int>((p) => p['id']).toList();
-                  final breathingIds = breathingDetails
-                      .map<int>((b) => b['id'])
-                      .toList();
-                  final provider = Provider.of<UserProvider>(
-                    context,
-                    listen: false,
-                  );
-                  final duration = provider.goals.routineDuration ?? 30;
-                  final routine = await ApiService.generateRoutine(
-                    poseIds,
-                    breathingIds,
-                    duration,
-                    provider.profile.userId,
-                  );
-                  if (!mounted) return;
-                  setState(() => loading = false);
-                  if (routine != null)
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => RoutineScreen(routine: routine),
-                      ),
-                    );
-                  else
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text("Failed to generate routine"),
-                      ),
-                    );
-                } catch (e) {
-                  if (!mounted) return;
-                  setState(() => loading = false);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Routine generation error")),
-                  );
-                }
-              },
+          // extra space so the last card clears the pinned button
+          const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _generateRoutine() async {
+    try {
+      setState(() => loading = true);
+      final poseIds = poseDetails.map<int>((p) => p['id']).toList();
+      final breathingIds = breathingDetails.map<int>((b) => b['id']).toList();
+      final provider = Provider.of<UserProvider>(context, listen: false);
+      final duration = provider.goals.routineDuration ?? 30;
+      final routine = await ApiService.generateRoutine(
+        poseIds,
+        breathingIds,
+        duration,
+        provider.profile.userId,
+      );
+      if (!mounted) return;
+      setState(() => loading = false);
+      if (routine != null) {
+        if (widget.embedded && widget.onSwitchTab != null) {
+          // Jump to the Home tab, which reloads the new routine
+          widget.onSwitchTab!(0);
+        } else {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => RoutineScreen(routine: routine),
             ),
+          );
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Failed to generate routine")),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => loading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Routine generation error")),
+      );
+    }
+  }
+
+  /// Always-visible bottom bar so users never hunt for the generate action.
+  Widget _pinnedGenerateBar() {
+    final hasItems = poseDetails.isNotEmpty || breathingDetails.isNotEmpty;
+    if (!hasItems) return const SizedBox.shrink();
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.bgCard,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 14,
+            offset: const Offset(0, -4),
           ),
         ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+          child: AppPrimaryButton(
+            label: LanguageHelper.t(
+              "🧘 Generate Yoga Routine",
+              "🧘 योगा दिनचर्या तयार करा",
+              "🧘 योगा दिनचर्या बनाएं",
+            ),
+            icon: Icons.playlist_add_check_rounded,
+            onPressed: _generateRoutine,
+          ),
+        ),
       ),
     );
   }
@@ -516,22 +560,24 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
                   children: [
                     Row(
                       children: [
-                        GestureDetector(
-                          onTap: () => Navigator.pop(context),
-                          child: Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.arrow_back_rounded,
-                              color: Colors.white,
-                              size: 20,
+                        if (!widget.embedded) ...[
+                          GestureDetector(
+                            onTap: () => Navigator.pop(context),
+                            child: Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.2),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.arrow_back_rounded,
+                                color: Colors.white,
+                                size: 20,
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 14),
+                          const SizedBox(width: 14),
+                        ],
                         Text(
                           LanguageHelper.t(
                             "Recommendations",
@@ -594,6 +640,7 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
                       )
                     : _buildContent(),
               ),
+              if (!loading && error == null) _pinnedGenerateBar(),
             ],
           ),
         ),

@@ -6,7 +6,7 @@ import '../services/api_service.dart';
 import '../models/user_profile.dart';
 import '../utils/language_helper.dart';
 import '../theme/app_theme.dart';
-import 'routine_screen.dart';
+import 'main_shell.dart';
 import 'profile_screen.dart';
 import '../Widgets/language_switcher.dart';
 
@@ -57,11 +57,13 @@ class _LoginScreenState extends State<LoginScreen> {
         response["gender"] ?? "",
       );
 
-      Navigator.pushReplacement(
+      Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(
-          builder: (_) => RoutineScreen(routine: routine ?? {"routine": []}),
+          builder: (_) =>
+              MainShell(initialRoutine: routine ?? {"routine": []}),
         ),
+        (route) => false,
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(

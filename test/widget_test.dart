@@ -1,30 +1,39 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
+// Basic smoke test — verifies the app's models behave sanely.
+// (The full app depends on platform plugins and network, which are
+// exercised on-device rather than in widget tests.)
 
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:yoga_mitra/main.dart';
+import 'package:yoga_mitra/models/goals.dart';
+import 'package:yoga_mitra/models/health_info.dart';
+import 'package:yoga_mitra/models/user_profile.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  test('UserProfile serializes to JSON', () {
+    final profile = UserProfile(userId: '1', name: 'Test', email: 't@t.com');
+    final json = profile.toJson();
+    expect(json['userId'], '1');
+    expect(json['name'], 'Test');
+    expect(json['email'], 't@t.com');
+  });
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+  test('HealthInfo serializes to JSON', () {
+    final info = HealthInfo(
+      height: 65,
+      weight: 70,
+      medicalConditions: ['Diabetes'],
+    );
+    final json = info.toJson();
+    expect(json['height'], 65);
+    expect(json['weight'], 70);
+    expect(json['medical_conditions'], ['Diabetes']);
+  });
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+  test('Goals serializes to JSON with defaults', () {
+    final goals = Goals();
+    final json = goals.toJson();
+    expect(json['routine_duration'], 30);
+    expect(json['focus_body_parts'], isEmpty);
+    expect(json['tags'], isEmpty);
   });
 }
