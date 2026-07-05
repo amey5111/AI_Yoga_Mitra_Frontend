@@ -19,15 +19,36 @@ class RecommendationsScreen extends StatefulWidget {
     this.onSwitchTab,
   });
   @override
-  State<RecommendationsScreen> createState() => _RecommendationsScreenState();
+  State<RecommendationsScreen> createState() => RecommendationsScreenState();
 }
 
-class _RecommendationsScreenState extends State<RecommendationsScreen> {
+class RecommendationsScreenState extends State<RecommendationsScreen> {
   bool loading = true;
   String? error;
   List<dynamic> recommendations = [];
   List<Map<String, dynamic>> poseDetails = [];
   List<Map<String, dynamic>> breathingDetails = [];
+  final ScrollController _scrollCtrl = ScrollController();
+
+  /// Scroll the list to the bottom (used when arriving from the Home
+  /// "Generate" button so the pinned Generate Routine button is in view).
+  void scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollCtrl.hasClients) {
+        _scrollCtrl.animateTo(
+          _scrollCtrl.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 450),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollCtrl.dispose();
+    super.dispose();
+  }
 
   String get langCode {
     switch (LanguageHelper.currentLanguage) {
@@ -395,6 +416,7 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
       onRefresh: _loadRecommendations,
       color: AppColors.accent,
       child: ListView(
+        controller: _scrollCtrl,
         padding: const EdgeInsets.only(bottom: 32),
         children: [
           // Yoga poses header

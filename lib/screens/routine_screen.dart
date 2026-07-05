@@ -25,15 +25,18 @@ class RoutineScreen extends StatefulWidget {
 
   /// When hosted inside the bottom-nav shell, [embedded] is true (hides the
   /// FAB and lets the shell own navigation). [onSwitchTab] jumps to another
-  /// tab (e.g. Recommendations) from the home screen.
+  /// tab (e.g. Recommendations) from the home screen. [onGenerate] jumps to
+  /// the Explore tab AND scrolls to the "Generate Yoga Routine" button.
   final bool embedded;
   final void Function(int tabIndex)? onSwitchTab;
+  final VoidCallback? onGenerate;
 
   const RoutineScreen({
     super.key,
     this.routine,
     this.embedded = false,
     this.onSwitchTab,
+    this.onGenerate,
   });
 
   @override
@@ -1041,10 +1044,11 @@ class RoutineScreenState extends State<RoutineScreen> {
                                   : t('Start', 'सुरू करा', 'शुरू करें'),
                             ),
                             // When there's no routine yet, this takes the user
-                            // to the Explore (Recommendations) tab to build one;
-                            // otherwise it starts live pose practice.
+                            // to the Explore tab AND scrolls to the Generate
+                            // Routine button; otherwise it starts pose practice.
                             onPressed: routineSteps.isEmpty
-                                ? () => widget.onSwitchTab?.call(1)
+                                ? () => (widget.onGenerate ??
+                                        () => widget.onSwitchTab?.call(1))()
                                 : () {
                                     // Launch pose detection for the first yoga pose
                                     final firstPose = routineSteps.firstWhere(
@@ -1233,7 +1237,8 @@ class RoutineScreenState extends State<RoutineScreen> {
               ),
               icon: Icons.auto_awesome_rounded,
               width: 240,
-              onPressed: () => widget.onSwitchTab?.call(1),
+              onPressed: () =>
+                  (widget.onGenerate ?? () => widget.onSwitchTab?.call(1))(),
                     ),
                   ],
                 ),

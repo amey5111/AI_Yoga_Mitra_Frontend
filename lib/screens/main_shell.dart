@@ -25,6 +25,8 @@ class _MainShellState extends State<MainShell> {
   int _index = 0;
   final GlobalKey<RoutineScreenState> _homeKey =
       GlobalKey<RoutineScreenState>();
+  final GlobalKey<RecommendationsScreenState> _exploreKey =
+      GlobalKey<RecommendationsScreenState>();
 
   late final List<Widget> _pages;
 
@@ -38,8 +40,13 @@ class _MainShellState extends State<MainShell> {
         routine: widget.initialRoutine,
         embedded: true,
         onSwitchTab: _switchTo,
+        onGenerate: _goGenerate,
       ),
-      RecommendationsScreen(embedded: true, onSwitchTab: _switchTo),
+      RecommendationsScreen(
+        key: _exploreKey,
+        embedded: true,
+        onSwitchTab: _switchTo,
+      ),
       const DietScreen(embedded: true),
       const SettingsScreen(),
     ];
@@ -53,6 +60,13 @@ class _MainShellState extends State<MainShell> {
         _homeKey.currentState?.reload();
       });
     }
+  }
+
+  /// From Home's "Generate" button: open the Explore tab and scroll straight
+  /// down to the pinned "Generate Yoga Routine" button.
+  void _goGenerate() {
+    setState(() => _index = 1);
+    _exploreKey.currentState?.scrollToBottom();
   }
 
   String t(String en, String mr, String hn) => LanguageHelper.t(en, mr, hn);
