@@ -3,8 +3,11 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
+  // static const String baseUrl = 'http://10.10.127.165:5000/api';
+  // static const String rootUrl = 'http://10.10.127.165:5000';
+
   static const String baseUrl = 'https://yoga-mitra-backend.onrender.com/api';
-  static const String rootUrl = 'https://yoga-mitra-backend.onrender.com';
+  static const String rootUrl = 'https://yoga-mitra-backend.onrender.com/';
 
   // ── Deep convert any nested structure to plain Dart maps/lists ────────────
   static dynamic _deepConvert(dynamic value) {
@@ -226,5 +229,28 @@ class ApiService {
   static Future<void> clearSession() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
+  }
+
+  /* ---------------------------------------------------------
+     POSE DETECTION AND CORRECTION AND PROGRESS TRACKING ADDITION
+  ---------------------------------------------------------- */
+  static Future<void> savePoseSession(Map<String, dynamic> data) async {
+    await http.post(
+      Uri.parse('$baseUrl/pose-tracking/session'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(data),
+    );
+  }
+
+  static Future<List<dynamic>> getUserSessions(String userId) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/pose-tracking/user/$userId'),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+
+    return [];
   }
 }

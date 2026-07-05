@@ -6,6 +6,7 @@ import '../models/goals.dart';
 import '../utils/language_helper.dart';
 import '../theme/app_theme.dart';
 import 'recommendations_screen.dart';
+import '../widgets/language_switcher.dart';
 
 class GoalsScreen extends StatefulWidget {
   const GoalsScreen({super.key});
@@ -24,51 +25,81 @@ class _GoalsScreenState extends State<GoalsScreen> {
 
   final pains = ["Back", "Neck", "Knee", "Shoulder", "Waist", "Wrist"];
   final goalsOptions = [
-    "Flexibility", "Stress Relief", "Strength", "Posture Correction", "Weight Loss",
+    "Flexibility",
+    "Stress Relief",
+    "Strength",
+    "Posture Correction",
+    "Weight Loss",
   ];
   final levels = ["Beginner", "Intermediate", "Advanced"];
 
   final List<IconData> painIcons = [
-    Icons.accessibility_new_rounded, Icons.self_improvement,
-    Icons.directions_run_rounded, Icons.sports_gymnastics,
-    Icons.fitness_center_rounded, Icons.pan_tool_outlined,
+    Icons.accessibility_new_rounded,
+    Icons.self_improvement,
+    Icons.directions_run_rounded,
+    Icons.sports_gymnastics,
+    Icons.fitness_center_rounded,
+    Icons.pan_tool_outlined,
   ];
 
   final List<IconData> goalIcons = [
-    Icons.airline_seat_flat_angled_rounded, Icons.spa_rounded,
-    Icons.fitness_center_rounded, Icons.straighten_rounded,
+    Icons.airline_seat_flat_angled_rounded,
+    Icons.spa_rounded,
+    Icons.fitness_center_rounded,
+    Icons.straighten_rounded,
     Icons.monitor_weight_outlined,
   ];
 
   String getLevelDisplay(String level) {
     switch (level) {
-      case "Beginner":     return LanguageHelper.t("Beginner", "प्राथमिक", "शुरुआती");
-      case "Intermediate": return LanguageHelper.t("Intermediate", "मध्यम", "मध्यम");
-      case "Advanced":     return LanguageHelper.t("Advanced", "प्रगत", "प्रगत");
-      default:             return level;
+      case "Beginner":
+        return LanguageHelper.t("Beginner", "प्राथमिक", "शुरुआती");
+      case "Intermediate":
+        return LanguageHelper.t("Intermediate", "मध्यम", "मध्यम");
+      case "Advanced":
+        return LanguageHelper.t("Advanced", "प्रगत", "प्रगत");
+      default:
+        return level;
     }
   }
 
   String getPainDisplay(String pain) {
     switch (pain) {
-      case "Back":     return LanguageHelper.t("Back", "पाठ", "पीठ");
-      case "Neck":     return LanguageHelper.t("Neck", "मान", "गर्दन");
-      case "Knee":     return LanguageHelper.t("Knee", "गुडघा", "घुटना");
-      case "Shoulder": return LanguageHelper.t("Shoulder", "खांदा", "कंधा");
-      case "Waist":    return LanguageHelper.t("Waist", "कंबर", "कमर");
-      case "Wrist":    return LanguageHelper.t("Wrist", "मनगट", "कलाई");
-      default:         return pain;
+      case "Back":
+        return LanguageHelper.t("Back", "पाठ", "पीठ");
+      case "Neck":
+        return LanguageHelper.t("Neck", "मान", "गर्दन");
+      case "Knee":
+        return LanguageHelper.t("Knee", "गुडघा", "घुटना");
+      case "Shoulder":
+        return LanguageHelper.t("Shoulder", "खांदा", "कंधा");
+      case "Waist":
+        return LanguageHelper.t("Waist", "कंबर", "कमर");
+      case "Wrist":
+        return LanguageHelper.t("Wrist", "मनगट", "कलाई");
+      default:
+        return pain;
     }
   }
 
   String getGoalDisplay(String goal) {
     switch (goal) {
-      case "Flexibility":        return LanguageHelper.t("Flexibility", "लवचिकता", "लचीलापन");
-      case "Stress Relief":      return LanguageHelper.t("Stress Relief", "ताण कमी", "तनाव राहत");
-      case "Strength":           return LanguageHelper.t("Strength", "शक्ती", "ताकत");
-      case "Posture Correction": return LanguageHelper.t("Posture Correction", "स्थिती सुधारणा", "मुद्रा सुधार");
-      case "Weight Loss":        return LanguageHelper.t("Weight Loss", "वजन कमी", "वजन घटाना");
-      default:                   return goal;
+      case "Flexibility":
+        return LanguageHelper.t("Flexibility", "लवचिकता", "लचीलापन");
+      case "Stress Relief":
+        return LanguageHelper.t("Stress Relief", "ताण कमी", "तनाव राहत");
+      case "Strength":
+        return LanguageHelper.t("Strength", "शक्ती", "ताकत");
+      case "Posture Correction":
+        return LanguageHelper.t(
+          "Posture Correction",
+          "स्थिती सुधारणा",
+          "मुद्रा सुधार",
+        );
+      case "Weight Loss":
+        return LanguageHelper.t("Weight Loss", "वजन कमी", "वजन घटाना");
+      default:
+        return goal;
     }
   }
 
@@ -108,8 +139,6 @@ class _GoalsScreenState extends State<GoalsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    LanguageHelper.loadLanguage();
-
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(gradient: AppGradients.softBg),
@@ -129,7 +158,9 @@ class _GoalsScreenState extends State<GoalsScreen> {
                 child: Column(
                   children: [
                     Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
+                        // Back Button
                         GestureDetector(
                           onTap: () => Navigator.pop(context),
                           child: Container(
@@ -138,34 +169,57 @@ class _GoalsScreenState extends State<GoalsScreen> {
                               color: Colors.white.withOpacity(0.2),
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(Icons.arrow_back_rounded,
-                                color: Colors.white, size: 20),
+                            child: const Icon(
+                              Icons.arrow_back_rounded,
+                              color: Colors.white,
+                              size: 20,
+                            ),
                           ),
+                        ),
+
+                        // Reusable Language Switcher
+                        LanguageSwitcher(
+                          popupOffset: const Offset(25, 20),
+                          onLanguageChanged: () {
+                            setState(() {});
+                          },
                         ),
                       ],
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      LanguageHelper.t("Your Goals", "तुमची लक्ष्ये", "आपके लक्ष्य"),
+                      LanguageHelper.t(
+                        "Your Goals",
+                        "तुमचे आरोग्य ध्येय ",
+                        "आपके लक्ष्य",
+                      ),
                       style: GoogleFonts.poppins(
-                        fontSize: 24, fontWeight: FontWeight.w700, color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
                       ),
                     ),
                     const SizedBox(height: 6),
                     Text(
                       LanguageHelper.t(
                         "Personalize your wellness journey",
-                        "आपला वेलनेस प्रवास वैयक्तिकृत करा",
-                        "अपनी वेलनेस यात्रा को वैयक्तिकृत करें",
+                        "आपला निरोगी होण्यासाठीचा प्रवास वैयक्तिकृत करा",
+                        "अपनी आरोग्य यात्रा को वैयक्तिकृत करें",
                       ),
                       style: GoogleFonts.inter(
-                          fontSize: 13, color: Colors.white.withOpacity(0.8)),
+                        fontSize: 13,
+                        color: Colors.white.withOpacity(0.8),
+                      ),
                     ),
                     const SizedBox(height: 20),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        _activeDot(), _line(), _activeDot(), _line(), _activeDot(),
+                        _activeDot(),
+                        _line(),
+                        _activeDot(),
+                        _line(),
+                        _activeDot(),
                       ],
                     ),
                   ],
@@ -196,15 +250,22 @@ class _GoalsScreenState extends State<GoalsScreen> {
                                   duration: const Duration(milliseconds: 200),
                                   margin: const EdgeInsets.only(right: 8),
                                   padding: const EdgeInsets.symmetric(
-                                      vertical: 14),
+                                    vertical: 14,
+                                  ),
                                   decoration: BoxDecoration(
-                                    color: sel ? AppColors.accent : AppColors.bgCard,
+                                    color: sel
+                                        ? AppColors.accent
+                                        : AppColors.bgCard,
                                     borderRadius: BorderRadius.circular(14),
                                     border: Border.all(
-                                      color: sel ? AppColors.accent : AppColors.divider,
+                                      color: sel
+                                          ? AppColors.accent
+                                          : AppColors.divider,
                                       width: 1.5,
                                     ),
-                                    boxShadow: sel ? AppShadows.button : AppShadows.soft,
+                                    boxShadow: sel
+                                        ? AppShadows.button
+                                        : AppShadows.soft,
                                   ),
                                   child: Column(
                                     children: [
@@ -212,9 +273,11 @@ class _GoalsScreenState extends State<GoalsScreen> {
                                         l == "Beginner"
                                             ? Icons.star_border_rounded
                                             : l == "Intermediate"
-                                                ? Icons.star_half_rounded
-                                                : Icons.star_rounded,
-                                        color: sel ? Colors.white : AppColors.accent,
+                                            ? Icons.star_half_rounded
+                                            : Icons.star_rounded,
+                                        color: sel
+                                            ? Colors.white
+                                            : AppColors.accent,
                                         size: 22,
                                       ),
                                       const SizedBox(height: 6),
@@ -222,8 +285,11 @@ class _GoalsScreenState extends State<GoalsScreen> {
                                         getLevelDisplay(l),
                                         textAlign: TextAlign.center,
                                         style: GoogleFonts.inter(
-                                          fontSize: 11, fontWeight: FontWeight.w600,
-                                          color: sel ? Colors.white : AppColors.textSecondary,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                          color: sel
+                                              ? Colors.white
+                                              : AppColors.textSecondary,
                                         ),
                                       ),
                                     ],
@@ -237,11 +303,18 @@ class _GoalsScreenState extends State<GoalsScreen> {
 
                       // Daily Time
                       _sectionHeader(
-                        LanguageHelper.t("Daily Time (min)", "दररोज वेळ (मिनिटे)", "दैनिक समय (मिनट)"),
+                        LanguageHelper.t(
+                          "Daily Time (min)",
+                          "दररोज वेळ (मिनिटे)",
+                          "दैनिक समय (मिनट)",
+                        ),
                         Icons.timer_outlined,
                       ),
                       AppCard(
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 16,
+                        ),
                         margin: const EdgeInsets.symmetric(horizontal: 16),
                         child: Row(
                           children: [
@@ -249,7 +322,8 @@ class _GoalsScreenState extends State<GoalsScreen> {
                               if (routineDuration > 5) {
                                 setState(() {
                                   routineDuration--;
-                                  timeController.text = routineDuration.toString();
+                                  timeController.text = routineDuration
+                                      .toString();
                                 });
                               }
                             }),
@@ -262,7 +336,8 @@ class _GoalsScreenState extends State<GoalsScreen> {
                                     keyboardType: TextInputType.number,
                                     textAlign: TextAlign.center,
                                     style: GoogleFonts.poppins(
-                                      fontSize: 32, fontWeight: FontWeight.w700,
+                                      fontSize: 32,
+                                      fontWeight: FontWeight.w700,
                                       color: AppColors.textPrimary,
                                     ),
                                     decoration: const InputDecoration(
@@ -281,7 +356,8 @@ class _GoalsScreenState extends State<GoalsScreen> {
                             _stepBtn(Icons.add_rounded, () {
                               setState(() {
                                 routineDuration++;
-                                timeController.text = routineDuration.toString();
+                                timeController.text = routineDuration
+                                    .toString();
                               });
                             }),
                           ],
@@ -290,13 +366,18 @@ class _GoalsScreenState extends State<GoalsScreen> {
 
                       // Pain Areas
                       _sectionHeader(
-                        LanguageHelper.t("Pain Areas", "वेदना क्षेत्रे", "दर्द क्षेत्र"),
+                        LanguageHelper.t(
+                          "Pain Areas",
+                          "वेदना क्षेत्रे",
+                          "दर्द क्षेत्र",
+                        ),
                         Icons.healing_rounded,
                       ),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: Wrap(
-                          spacing: 10, runSpacing: 10,
+                          spacing: 10,
+                          runSpacing: 10,
                           children: List.generate(pains.length, (i) {
                             final p = pains[i];
                             final sel = painAreas.contains(p);
@@ -304,8 +385,11 @@ class _GoalsScreenState extends State<GoalsScreen> {
                               label: getPainDisplay(p),
                               selected: sel,
                               icon: painIcons[i],
-                              onTap: () => setState(() =>
-                                  sel ? painAreas.remove(p) : painAreas.add(p)),
+                              onTap: () => setState(
+                                () => sel
+                                    ? painAreas.remove(p)
+                                    : painAreas.add(p),
+                              ),
                             );
                           }),
                         ),
@@ -313,13 +397,18 @@ class _GoalsScreenState extends State<GoalsScreen> {
 
                       // Goals
                       _sectionHeader(
-                        LanguageHelper.t("Health Goals", "आरोग्य लक्ष्ये", "स्वास्थ्य लक्ष्य"),
+                        LanguageHelper.t(
+                          "Health Goals",
+                          "आरोग्य लक्ष्ये",
+                          "स्वास्थ्य लक्ष्य",
+                        ),
                         Icons.flag_rounded,
                       ),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: Wrap(
-                          spacing: 10, runSpacing: 10,
+                          spacing: 10,
+                          runSpacing: 10,
                           children: List.generate(goalsOptions.length, (i) {
                             final g = goalsOptions[i];
                             final sel = goalsList.contains(g);
@@ -327,8 +416,11 @@ class _GoalsScreenState extends State<GoalsScreen> {
                               label: getGoalDisplay(g),
                               selected: sel,
                               icon: goalIcons[i],
-                              onTap: () => setState(() =>
-                                  sel ? goalsList.remove(g) : goalsList.add(g)),
+                              onTap: () => setState(
+                                () => sel
+                                    ? goalsList.remove(g)
+                                    : goalsList.add(g),
+                              ),
                             );
                           }),
                         ),
@@ -362,7 +454,8 @@ class _GoalsScreenState extends State<GoalsScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 44, height: 44,
+        width: 44,
+        height: 44,
         decoration: BoxDecoration(
           color: AppColors.chipBg,
           borderRadius: BorderRadius.circular(12),
@@ -374,15 +467,20 @@ class _GoalsScreenState extends State<GoalsScreen> {
   }
 
   Widget _activeDot() => Container(
-    width: 28, height: 28,
-    decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.white),
+    width: 28,
+    height: 28,
+    decoration: const BoxDecoration(
+      shape: BoxShape.circle,
+      color: Colors.white,
+    ),
     child: const Center(
       child: Icon(Icons.check_rounded, size: 16, color: AppColors.accent),
     ),
   );
 
   Widget _line() => Container(
-    width: 40, height: 2,
+    width: 40,
+    height: 2,
     margin: const EdgeInsets.only(left: 4, right: 4),
     color: Colors.white.withOpacity(0.4),
   );

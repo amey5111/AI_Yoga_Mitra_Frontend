@@ -189,51 +189,52 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                     child: FadeTransition(
                       opacity: _fadeAnim ?? const AlwaysStoppedAnimation(1.0),
                       child: SlideTransition(
-                        position: _slideAnim ?? const AlwaysStoppedAnimation(Offset.zero),
+                        position:
+                            _slideAnim ??
+                            const AlwaysStoppedAnimation(Offset.zero),
                         child: SingleChildScrollView(
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.start,
                             children: [
-                              const SizedBox(height: 36),
+                              const SizedBox(height: 16),
 
                               // Label pill
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 18,
-                                  vertical: 7,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.18),
-                                  borderRadius: BorderRadius.circular(99),
-                                  border: Border.all(
-                                    color: Colors.white.withOpacity(0.3),
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Container(
-                                      width: 7,
-                                      height: 7,
-                                      decoration: const BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: Color(0xFF9EFF90),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      'AI Powered Wellness',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 12,
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-
-                              const SizedBox(height: 28),
+                              // Container(
+                              //   padding: const EdgeInsets.symmetric(
+                              //     horizontal: 18,
+                              //     vertical: 7,
+                              //   ),
+                              //   decoration: BoxDecoration(
+                              //     color: Colors.white.withOpacity(0.18),
+                              //     borderRadius: BorderRadius.circular(99),
+                              //     border: Border.all(
+                              //       color: Colors.white.withOpacity(0.3),
+                              //     ),
+                              //   ),
+                              //   child: Row(
+                              //     mainAxisSize: MainAxisSize.min,
+                              //     children: [
+                              //       Container(
+                              //         width: 7,
+                              //         height: 7,
+                              //         decoration: const BoxDecoration(
+                              //           shape: BoxShape.circle,
+                              //           color: Color(0xFF9EFF90),
+                              //         ),
+                              //       ),
+                              //       const SizedBox(width: 8),
+                              //       Text(
+                              //         'AI Powered Wellness',
+                              //         style: GoogleFonts.inter(
+                              //           fontSize: 12,
+                              //           color: Colors.white,
+                              //           fontWeight: FontWeight.w500,
+                              //         ),
+                              //       ),
+                              //     ],
+                              //   ),
+                              // ),
+                              // const SizedBox(height: 28),
 
                               // Logo
                               Container(
@@ -293,7 +294,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                 ),
                               ),
 
-                              const SizedBox(height: 36),
+                              const SizedBox(height: 16),
 
                               // Language selector glass card
                               Padding(

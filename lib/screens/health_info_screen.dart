@@ -6,6 +6,7 @@ import '../models/health_info.dart';
 import '../utils/language_helper.dart';
 import '../theme/app_theme.dart';
 import 'goals_screen.dart';
+import '../widgets/language_switcher.dart';
 
 class HealthInfoScreen extends StatefulWidget {
   const HealthInfoScreen({super.key});
@@ -24,27 +25,43 @@ class _HealthInfoScreenState extends State<HealthInfoScreen> {
   final otherController = TextEditingController();
 
   final List<String> conditions = [
-    "Diabetes", "Thyroid", "High BP", "PCOS",
-    "Arthritis", "Asthma", "Leg Injury",
+    "Diabetes",
+    "Thyroid",
+    "High BP",
+    "PCOS",
+    "Arthritis",
+    "Asthma",
+    "Leg Injury",
   ];
 
   final List<IconData> conditionIcons = [
-    Icons.bloodtype_outlined, Icons.monitor_heart_outlined,
-    Icons.favorite_outline, Icons.female_rounded,
-    Icons.accessibility_new_rounded, Icons.air_outlined,
+    Icons.bloodtype_outlined,
+    Icons.monitor_heart_outlined,
+    Icons.favorite_outline,
+    Icons.female_rounded,
+    Icons.accessibility_new_rounded,
+    Icons.air_outlined,
     Icons.directions_walk_outlined,
   ];
 
   String getConditionDisplay(String condition) {
     switch (condition) {
-      case "Diabetes":    return LanguageHelper.t("Diabetes", "मधुमेह", "मधुमेह");
-      case "Thyroid":     return LanguageHelper.t("Thyroid", "थायरॉईड", "थायरॉइड");
-      case "High BP":     return LanguageHelper.t("High BP", "उच्च रक्तदाब", "उच्च रक्तचाप");
-      case "PCOS":        return LanguageHelper.t("PCOS", "पीसीओएस", "पीसीओएस");
-      case "Arthritis":   return LanguageHelper.t("Arthritis", "सांधेदुखी", "गठिया");
-      case "Asthma":      return LanguageHelper.t("Asthma", "दमा", "दमा");
-      case "Leg Injury":  return LanguageHelper.t("Leg Injury", "पायाला दुखापत", "पैर की चोट");
-      default:            return condition;
+      case "Diabetes":
+        return LanguageHelper.t("Diabetes", "मधुमेह", "मधुमेह");
+      case "Thyroid":
+        return LanguageHelper.t("Thyroid", "थायरॉईड", "थायरॉइड");
+      case "High BP":
+        return LanguageHelper.t("High BP", "उच्च रक्तदाब", "उच्च रक्तचाप");
+      case "PCOS":
+        return LanguageHelper.t("PCOS", "पीसीओएस", "पीसीओएस");
+      case "Arthritis":
+        return LanguageHelper.t("Arthritis", "सांधेदुखी", "गठिया");
+      case "Asthma":
+        return LanguageHelper.t("Asthma", "दमा", "दमा");
+      case "Leg Injury":
+        return LanguageHelper.t("Leg Injury", "पायाला दुखापत", "पैर की चोट");
+      default:
+        return condition;
     }
   }
 
@@ -76,15 +93,20 @@ class _HealthInfoScreenState extends State<HealthInfoScreen> {
     List<String> finalConditions = [...selectedConditions];
     if (otherController.text.isNotEmpty) {
       finalConditions.addAll(
-          otherController.text.split(",").map((e) => e.trim()));
+        otherController.text.split(",").map((e) => e.trim()),
+      );
     }
-    provider.setHealthInfo(HealthInfo(
-      height: height,
-      weight: weight,
-      medicalConditions: finalConditions,
-    ));
+    provider.setHealthInfo(
+      HealthInfo(
+        height: height,
+        weight: weight,
+        medicalConditions: finalConditions,
+      ),
+    );
     Navigator.push(
-        context, MaterialPageRoute(builder: (_) => const GoalsScreen()));
+      context,
+      MaterialPageRoute(builder: (_) => const GoalsScreen()),
+    );
   }
 
   Widget _metricCard({
@@ -118,7 +140,10 @@ class _HealthInfoScreenState extends State<HealthInfoScreen> {
               Text(label, style: AppTextStyles.heading3()),
               const Spacer(),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.accent.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(99),
@@ -126,7 +151,8 @@ class _HealthInfoScreenState extends State<HealthInfoScreen> {
                 child: Text(
                   unit,
                   style: GoogleFonts.inter(
-                    fontSize: 12, fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
                     color: AppColors.accent,
                   ),
                 ),
@@ -143,10 +169,13 @@ class _HealthInfoScreenState extends State<HealthInfoScreen> {
                     width: 100,
                     child: TextField(
                       controller: controller,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
                       textAlign: TextAlign.center,
                       style: GoogleFonts.poppins(
-                        fontSize: 28, fontWeight: FontWeight.w700,
+                        fontSize: 28,
+                        fontWeight: FontWeight.w700,
                         color: AppColors.textPrimary,
                       ),
                       decoration: const InputDecoration(
@@ -178,7 +207,8 @@ class _HealthInfoScreenState extends State<HealthInfoScreen> {
             ),
             child: Slider(
               value: value.clamp(min, max),
-              min: min, max: max,
+              min: min,
+              max: max,
               onChanged: onChanged,
             ),
           ),
@@ -198,7 +228,8 @@ class _HealthInfoScreenState extends State<HealthInfoScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 44, height: 44,
+        width: 44,
+        height: 44,
         decoration: BoxDecoration(
           color: AppColors.chipBg,
           borderRadius: BorderRadius.circular(12),
@@ -211,8 +242,6 @@ class _HealthInfoScreenState extends State<HealthInfoScreen> {
 
   @override
   Widget build(BuildContext context) {
-    LanguageHelper.loadLanguage();
-
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(gradient: AppGradients.softBg),
@@ -232,7 +261,9 @@ class _HealthInfoScreenState extends State<HealthInfoScreen> {
                 child: Column(
                   children: [
                     Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
+                        // Back Button
                         GestureDetector(
                           onTap: () => Navigator.pop(context),
                           child: Container(
@@ -241,17 +272,34 @@ class _HealthInfoScreenState extends State<HealthInfoScreen> {
                               color: Colors.white.withOpacity(0.2),
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(Icons.arrow_back_rounded,
-                                color: Colors.white, size: 20),
+                            child: const Icon(
+                              Icons.arrow_back_rounded,
+                              color: Colors.white,
+                              size: 20,
+                            ),
                           ),
+                        ),
+
+                        // Reusable Language Switcher
+                        LanguageSwitcher(
+                          popupOffset: const Offset(25, 20),
+                          onLanguageChanged: () {
+                            setState(() {});
+                          },
                         ),
                       ],
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      LanguageHelper.t("Health Info", "आरोग्य माहिती", "स्वास्थ्य जानकारी"),
+                      LanguageHelper.t(
+                        "Health Info",
+                        "आरोग्य माहिती",
+                        "स्वास्थ्य जानकारी",
+                      ),
                       style: GoogleFonts.poppins(
-                        fontSize: 24, fontWeight: FontWeight.w700, color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
                       ),
                     ),
                     const SizedBox(height: 6),
@@ -262,14 +310,20 @@ class _HealthInfoScreenState extends State<HealthInfoScreen> {
                         "आपकी योगा दिनचर्या को व्यक्तिगत बनाने में मदद करें",
                       ),
                       style: GoogleFonts.inter(
-                          fontSize: 13, color: Colors.white.withOpacity(0.8)),
+                        fontSize: 13,
+                        color: Colors.white.withOpacity(0.8),
+                      ),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 20),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        _dot(true), _line(), _dot(true), _line(), _dot(false),
+                        _dot(true),
+                        _line(),
+                        _dot(true),
+                        _line(),
+                        _dot(false),
                       ],
                     ),
                   ],
@@ -288,20 +342,30 @@ class _HealthInfoScreenState extends State<HealthInfoScreen> {
                       _metricCard(
                         label: LanguageHelper.t("Height", "उंची", "ऊंचाई"),
                         unit: LanguageHelper.t("inches", "इंच", "इंच"),
-                        value: height, min: 36, max: 96,
+                        value: height,
+                        min: 36,
+                        max: 96,
                         icon: Icons.height_rounded,
                         controller: heightController,
-                        onChanged: (v) => setState(() { height = v; heightController.text = v.toStringAsFixed(1); }),
+                        onChanged: (v) => setState(() {
+                          height = v;
+                          heightController.text = v.toStringAsFixed(1);
+                        }),
                         onStep: updateHeight,
                       ),
 
                       _metricCard(
                         label: LanguageHelper.t("Weight", "वजन", "वजन"),
                         unit: "kg",
-                        value: weight, min: 20, max: 180,
+                        value: weight,
+                        min: 20,
+                        max: 180,
                         icon: Icons.monitor_weight_outlined,
                         controller: weightController,
-                        onChanged: (v) => setState(() { weight = v; weightController.text = v.toStringAsFixed(1); }),
+                        onChanged: (v) => setState(() {
+                          weight = v;
+                          weightController.text = v.toStringAsFixed(1);
+                        }),
                         onStep: updateWeight,
                       ),
 
@@ -316,13 +380,19 @@ class _HealthInfoScreenState extends State<HealthInfoScreen> {
                                 color: AppColors.chipBg,
                                 borderRadius: BorderRadius.circular(10),
                               ),
-                              child: const Icon(Icons.medical_information_outlined,
-                                  color: AppColors.accent, size: 18),
+                              child: const Icon(
+                                Icons.medical_information_outlined,
+                                color: AppColors.accent,
+                                size: 18,
+                              ),
                             ),
                             const SizedBox(width: 10),
                             Text(
                               LanguageHelper.t(
-                                  "Medical Conditions", "वैद्यकीय स्थिती", "चिकित्सा स्थितियाँ"),
+                                "Medical Conditions",
+                                "वैद्यकीय स्थिती",
+                                "चिकित्सा स्थितियाँ",
+                              ),
                               style: AppTextStyles.heading3(),
                             ),
                           ],
@@ -333,40 +403,57 @@ class _HealthInfoScreenState extends State<HealthInfoScreen> {
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: Wrap(
-                          spacing: 10, runSpacing: 10,
+                          spacing: 10,
+                          runSpacing: 10,
                           children: List.generate(conditions.length, (i) {
                             final c = conditions[i];
                             final sel = selectedConditions.contains(c);
                             return GestureDetector(
                               onTap: () => setState(() {
-                                sel ? selectedConditions.remove(c)
+                                sel
+                                    ? selectedConditions.remove(c)
                                     : selectedConditions.add(c);
                               }),
                               child: AnimatedContainer(
                                 duration: const Duration(milliseconds: 200),
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 14, vertical: 10),
+                                  horizontal: 14,
+                                  vertical: 10,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: sel ? AppColors.accent : AppColors.bgCard,
+                                  color: sel
+                                      ? AppColors.accent
+                                      : AppColors.bgCard,
                                   borderRadius: BorderRadius.circular(12),
                                   border: Border.all(
-                                    color: sel ? AppColors.accent : AppColors.divider,
+                                    color: sel
+                                        ? AppColors.accent
+                                        : AppColors.divider,
                                     width: 1.5,
                                   ),
-                                  boxShadow: sel ? AppShadows.button : AppShadows.soft,
+                                  boxShadow: sel
+                                      ? AppShadows.button
+                                      : AppShadows.soft,
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(conditionIcons[i],
-                                        size: 16,
-                                        color: sel ? Colors.white : AppColors.accent),
+                                    Icon(
+                                      conditionIcons[i],
+                                      size: 16,
+                                      color: sel
+                                          ? Colors.white
+                                          : AppColors.accent,
+                                    ),
                                     const SizedBox(width: 8),
                                     Text(
                                       getConditionDisplay(c),
                                       style: GoogleFonts.inter(
-                                        fontSize: 13, fontWeight: FontWeight.w600,
-                                        color: sel ? Colors.white : AppColors.textPrimary,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: sel
+                                            ? Colors.white
+                                            : AppColors.textPrimary,
                                       ),
                                     ),
                                   ],
@@ -398,17 +485,23 @@ class _HealthInfoScreenState extends State<HealthInfoScreen> {
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 12),
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
                           decoration: BoxDecoration(
                             color: AppColors.accent.withOpacity(0.07),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                                color: AppColors.accent.withOpacity(0.2)),
+                              color: AppColors.accent.withOpacity(0.2),
+                            ),
                           ),
                           child: Row(
                             children: [
-                              Icon(Icons.shield_outlined,
-                                  color: AppColors.accent, size: 18),
+                              Icon(
+                                Icons.shield_outlined,
+                                color: AppColors.accent,
+                                size: 18,
+                              ),
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Text(
@@ -418,7 +511,8 @@ class _HealthInfoScreenState extends State<HealthInfoScreen> {
                                     "आपका स्वास्थ्य डेटा आपके डिवाइस पर सुरक्षित है.",
                                   ),
                                   style: AppTextStyles.caption(
-                                      color: AppColors.accent),
+                                    color: AppColors.accent,
+                                  ),
                                 ),
                               ),
                             ],
@@ -430,7 +524,11 @@ class _HealthInfoScreenState extends State<HealthInfoScreen> {
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: AppPrimaryButton(
-                          label: LanguageHelper.t("Next: Goals", "पुढे: लक्ष्ये", "आगे: लक्ष्य"),
+                          label: LanguageHelper.t(
+                            "Next: Goals",
+                            "पुढे: लक्ष्ये",
+                            "आगे: लक्ष्य",
+                          ),
                           onPressed: next,
                           icon: Icons.arrow_forward_rounded,
                         ),
@@ -447,19 +545,24 @@ class _HealthInfoScreenState extends State<HealthInfoScreen> {
   }
 
   Widget _dot(bool active) => Container(
-    width: 28, height: 28,
+    width: 28,
+    height: 28,
     decoration: BoxDecoration(
       shape: BoxShape.circle,
       color: active ? Colors.white : Colors.white.withOpacity(0.3),
     ),
     child: Center(
-      child: Icon(Icons.check_rounded,
-          size: 16, color: active ? AppColors.accent : Colors.transparent),
+      child: Icon(
+        Icons.check_rounded,
+        size: 16,
+        color: active ? AppColors.accent : Colors.transparent,
+      ),
     ),
   );
 
   Widget _line() => Container(
-    width: 40, height: 2,
+    width: 40,
+    height: 2,
     margin: const EdgeInsets.only(bottom: 0, left: 4, right: 4),
     color: Colors.white.withOpacity(0.3),
   );

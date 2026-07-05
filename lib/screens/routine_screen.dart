@@ -14,6 +14,8 @@ import 'breathing_detail_screen.dart';
 import 'welcome_screen.dart';
 import 'my_profile_screen.dart';
 import 'edit_routine_screen.dart';
+import '../Widgets/normal_language_switcher.dart';
+import 'pose_detection_screen.dart';
 
 class RoutineScreen extends StatefulWidget {
   final Map<String, dynamic>? routine;
@@ -562,11 +564,60 @@ class _RoutineScreenState extends State<RoutineScreen> {
                 ),
               ),
               const Spacer(),
-              Text(
-                t('Start Practice', 'सराव सुरू करा', 'अभ्यास शुरू करें'),
-                style: GoogleFonts.inter(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
+              InkWell(
+                onTap: () {
+                  // Only yoga poses can be detected
+                  if (item['type'] == 'pose') {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => PoseDetectionScreen(
+                          poseId: item['id'],
+                          poseName: name,
+                        ),
+                      ),
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Pose detection is available only for yoga poses.',
+                        ),
+                      ),
+                    );
+                  }
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.camera_alt,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        t(
+                          'Start Practice',
+                          'सराव सुरू करा',
+                          'अभ्यास शुरू करें',
+                        ),
+                        style: GoogleFonts.inter(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -679,7 +730,7 @@ class _RoutineScreenState extends State<RoutineScreen> {
                               Text(
                                 getGreeting(),
                                 style: GoogleFonts.poppins(
-                                  fontSize: 30,
+                                  fontSize: 20,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -691,13 +742,24 @@ class _RoutineScreenState extends State<RoutineScreen> {
                                 ),
                                 style: GoogleFonts.inter(
                                   color: Colors.grey,
-                                  fontSize: 24,
+                                  fontSize: 14,
                                 ),
                               ),
                             ],
                           ),
                         ),
-                        profileMenu(),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            NormalLanguageSwitcher(
+                              onLanguageChanged: () {
+                                setState(() {});
+                              },
+                            ),
+                            const SizedBox(height: 10),
+                            profileMenu(),
+                          ],
+                        ),
                       ],
                     ),
                   ),
