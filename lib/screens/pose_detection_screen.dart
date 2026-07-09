@@ -17,6 +17,7 @@ import '../services/body_visibility_service.dart';
 import '../services/pose_hold_service.dart';
 import 'dart:async';
 import 'package:flutter/services.dart';
+import 'pose_result_screen.dart';
 
 class PoseDetectionScreen extends StatefulWidget {
   final int poseId;
@@ -79,6 +80,15 @@ class _PoseDetectionScreenState extends State<PoseDetectionScreen> {
 
   Timer? holdTimer;
 
+  // ── Session metrics for AI post-session feedback ─────────────────────────
+  double _sessionSumSim = 0;
+  int _sessionCountSim = 0;
+  double _sessionBestSim = 0;
+  int _sessionFrames = 0;
+  int _sessionVisFails = 0;
+  int _maxHoldReached = 0;
+  bool _finishing = false;
+
   double get holdProgress {
     return currentHoldTime / 15;
   }
@@ -91,6 +101,8 @@ class _PoseDetectionScreenState extends State<PoseDetectionScreen> {
 
       setState(() {
         currentHoldTime++;
+
+        if (currentHoldTime > _maxHoldReached) _maxHoldReached = currentHoldTime;
 
         if (currentHoldTime >= 15) {
           poseCompleted = true;
@@ -267,6 +279,9 @@ class _PoseDetectionScreenState extends State<PoseDetectionScreen> {
 
         bodyStatus = visibilityResult.message;
 
+        _sessionFrames++;
+        if (!isBodyVisible) _sessionVisFails++;
+
         landmarkCount = detectedPose!.landmarks.length;
 
         normalizedLandmarks = PoseNormalizer.normalize(detectedPose!);
@@ -316,6 +331,10 @@ class _PoseDetectionScreenState extends State<PoseDetectionScreen> {
 
               updateSimilarity(similarity);
 
+              _sessionSumSim += similarity;
+              _sessionCountSim++;
+              if (similarity > _sessionBestSim) _sessionBestSim = similarity;
+
               matchedPose = selectedPose.poseName;
             }
           } catch (_) {
@@ -354,11 +373,10 @@ class _PoseDetectionScreenState extends State<PoseDetectionScreen> {
   void dispose() {
     holdTimer?.cancel();
 
+    // Return the app to portrait after leaving the (landscape) detector
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
     ]);
 
     _cameraController?.dispose();
@@ -366,6 +384,61 @@ class _PoseDetectionScreenState extends State<PoseDetectionScreen> {
     _poseService.dispose();
 
     super.dispose();
+  }
+
+  // ── Finish the session and open AI post-session feedback ─────────────────
+  Future<void> _finishSession() async {
+    if (_finishing) return;
+    setState(() => _finishing = true);
+
+    holdTimer?.cancel();
+    try {
+      await _cameraController?.stopImageStream();
+    } catch (_) {}
+
+    final avg = _sessionCountSim > 0 ? _sessionSumSim / _sessionCountSim : 0.0;
+    final best = _sessionBestSim;
+    final held = poseCompleted ? 15 : _maxHoldReached;
+    final visRatio = _sessionFrames > 0 ? _sessionVisFails / _sessionFrames : 0.0;
+
+    final mistakes = <String>[];
+    if (!poseCompleted) {
+      mistakes.add("Did not hold the pose for the full 15 seconds");
+    }
+    if (avg < 60 && _sessionCountSim > 0) {
+      mistakes.add("Overall alignment stayed below target accuracy");
+    }
+    if (visRatio > 0.3) {
+      mistakes.add("Full body was often not visible in the camera frame");
+    }
+    if (best >= 80 && avg < 60) {
+      mistakes.add("Found the correct pose but struggled to hold it steadily");
+    }
+
+    final result = <String, dynamic>{
+      'poseId': widget.poseId,
+      'poseName': widget.poseName,
+      'avgSimilarity': avg,
+      'bestSimilarity': best,
+      'durationAchieved': held,
+      'targetDuration': 15,
+      'completed': poseCompleted,
+      'mistakes': mistakes,
+      'level': 'beginner',
+    };
+
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
+
+    if (!mounted) return;
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PoseResultScreen(results: [result]),
+      ),
+    );
   }
 
   String getPoseStatus(double score) {
@@ -732,9 +805,58 @@ class _PoseDetectionScreenState extends State<PoseDetectionScreen> {
 
           _buildCompletionOverlay(),
 
-          // _buildPoseInfoCard(),
+          // ── Finish & Get Feedback button (bottom-left) ──────────────────
+          Positioned(
+            left: 16,
+            bottom: 16,
+            child: ElevatedButton.icon(
+              onPressed: _finishing ? null : _finishSession,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: poseCompleted
+                    ? const Color(0xFF34C759)
+                    : const Color(0xFF5348C7),
+                foregroundColor: Colors.white,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                elevation: 6,
+              ),
+              icon: _finishing
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Icon(Icons.assessment_rounded),
+              label: Text(
+                _finishing
+                    ? "Analyzing…"
+                    : "Finish & Get Feedback",
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
+          ),
 
-          // _buildBottomHint(),
+          // Small close (X) top-left to exit without feedback
+          Positioned(
+            left: 12,
+            top: 12,
+            child: GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: Container(
+                padding: const EdgeInsets.all(9),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.4),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.close_rounded,
+                    color: Colors.white, size: 22),
+              ),
+            ),
+          ),
         ],
       ),
     );

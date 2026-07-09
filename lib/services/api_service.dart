@@ -3,8 +3,8 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
-  // static const String baseUrl = 'http://10.10.127.165:5000/api';
-  // static const String rootUrl = 'http://10.10.127.165:5000';
+  // static const String baseUrl = 'http://localhost:5000/api';
+  // static const String rootUrl = 'http://localhost:5000';
 
   static const String baseUrl = 'https://yoga-mitra-backend.onrender.com/api';
   static const String rootUrl = 'https://yoga-mitra-backend.onrender.com/';
@@ -362,5 +362,32 @@ class ApiService {
 
   static Future<void> deleteMedicalReport(String userId) async {
     await http.delete(Uri.parse('$baseUrl/user/$userId/report'));
+  }
+
+  /* ---------------------------------------------------------
+     AI POST-SESSION FEEDBACK
+  ---------------------------------------------------------- */
+  static Future<Map<String, dynamic>?> getSessionFeedback({
+    required List<Map<String, dynamic>> results,
+    required String userId,
+    required String language,
+  }) async {
+    final resp = await http
+        .post(
+          Uri.parse('$baseUrl/session/feedback'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'results': results,
+            'userId': userId,
+            'language': language,
+          }),
+        )
+        .timeout(const Duration(seconds: 120));
+
+    if (resp.statusCode == 200) {
+      final data = _deepConvert(jsonDecode(resp.body)) as Map<String, dynamic>;
+      return data['feedback'] as Map<String, dynamic>?;
+    }
+    return null;
   }
 }

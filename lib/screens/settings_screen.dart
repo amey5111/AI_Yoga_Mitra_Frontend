@@ -11,6 +11,7 @@ import '../utils/language_helper.dart';
 import '../theme/app_theme.dart';
 import 'welcome_screen.dart';
 import 'health_info_screen.dart';
+import 'progress_dashboard_screen.dart';
 import '../Widgets/normal_language_switcher.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -171,6 +172,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  void _openHistory() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const ProgressDashboardScreen()),
+    );
+  }
+
   Future<void> _logout() async {
     final provider = Provider.of<UserProvider>(context, listen: false);
     final userId = provider.profile.userId;
@@ -287,6 +295,62 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: ListView(
               padding: const EdgeInsets.fromLTRB(16, 18, 16, 30),
               children: [
+                // ── PRACTICE HISTORY ────────────────────────────────────
+                GestureDetector(
+                  onTap: _openHistory,
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      gradient: AppGradients.cardGradient,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: AppShadows.button,
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.22),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Icons.insights_rounded,
+                              color: Colors.white, size: 22),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                t("Practice History", "सराव इतिहास",
+                                    "अभ्यास इतिहास"),
+                                style: GoogleFonts.poppins(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                t("Your past sessions & progress",
+                                    "मागील सत्रे व प्रगती",
+                                    "पिछले सत्र व प्रगति"),
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  color: Colors.white.withOpacity(0.85),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(Icons.chevron_right_rounded,
+                            color: Colors.white),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+
                 // ── MEDICAL REPORT SECTION ──────────────────────────────
                 _sectionLabel(
                   Icons.description_outlined,
