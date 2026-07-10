@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/api_service.dart';
+import '../services/voice_service.dart';
 import '../utils/language_helper.dart';
 import '../theme/app_theme.dart';
 import '../widgets/normal_language_switcher.dart';
@@ -51,6 +52,46 @@ class _PoseDetailScreenState extends State<PoseDetailScreen> {
       pose = p;
     } catch (_) {}
     if (mounted) setState(() => loading = false);
+    // Voice: register a reader so "read" speaks the guide (we do NOT auto-read
+    // the long guide — that echoes back into the mic and re-triggers commands).
+    if (pose != null) {
+      VoiceService.instance.setReader(_spokenGuide);
+    }
+  }
+
+  String _spokenGuide() {
+    final p = pose;
+    if (p == null) return '';
+    final name = (p['name']?[langCode] ?? '').toString();
+    final diff = (p['difficulty_level']?[langCode] ?? '').toString();
+    List<String> asList(dynamic v) {
+      if (v == null) return [];
+      if (v is List) return v.map((e) => e.toString()).toList();
+      return [v.toString()];
+    }
+
+    final benefits = asList(p['primary_benefits']?[langCode]);
+    final steps = asList(p['instructions']?[langCode]);
+    final b = StringBuffer();
+    b.write('$name. ');
+    if (diff.isNotEmpty) b.write('${LanguageHelper.t("Level", "पातळी", "स्तर")}: $diff. ');
+    if (benefits.isNotEmpty) {
+      b.write('${LanguageHelper.t("Benefits", "फायदे", "लाभ")}: ${benefits.take(3).join(", ")}. ');
+    }
+    if (steps.isNotEmpty) {
+      b.write('${LanguageHelper.t("Steps", "पायऱ्या", "चरण")}: ');
+      for (var i = 0; i < steps.length && i < 6; i++) {
+        b.write('${i + 1}. ${steps[i]} ');
+      }
+    }
+    return b.toString();
+  }
+
+  @override
+  void dispose() {
+    VoiceService.instance.clearReader();
+    VoiceService.instance.notifyPoseClosed(widget.poseId);
+    super.dispose();
   }
 
   Widget _chip(String text, {IconData? icon}) {

@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../providers/user_provider.dart';
 import '../services/api_service.dart';
+import '../services/voice_service.dart';
 import '../utils/language_helper.dart';
 import '../theme/app_theme.dart';
 import 'pose_detail_screen.dart';
@@ -29,6 +30,28 @@ class RecommendationsScreenState extends State<RecommendationsScreen> {
   List<Map<String, dynamic>> poseDetails = [];
   List<Map<String, dynamic>> breathingDetails = [];
   final ScrollController _scrollCtrl = ScrollController();
+
+  /// Voice: a speakable summary of the recommendations.
+  String spokenSummary() {
+    if (poseDetails.isEmpty && breathingDetails.isEmpty) {
+      return LanguageHelper.t(
+        "No recommendations yet.", "अद्याप शिफारसी नाहीत.",
+        "अभी कोई सिफारिश नहीं.");
+    }
+    final poses = poseDetails
+        .map((p) => (p['name']?[langCode] ?? '').toString())
+        .where((n) => n.isNotEmpty)
+        .join(', ');
+    final breaths = breathingDetails
+        .map((b) => (b['name']?[langCode] ?? '').toString())
+        .where((n) => n.isNotEmpty)
+        .join(', ');
+    return LanguageHelper.t(
+      "I found ${poseDetails.length} yoga poses: $poses. And ${breathingDetails.length} breathing techniques: $breaths. Say generate my routine to build a session.",
+      "मला ${poseDetails.length} आसने सापडली: $poses. आणि ${breathingDetails.length} प्राणायाम: $breaths. सत्र तयार करण्यासाठी 'माझी दिनचर्या तयार कर' म्हणा.",
+      "मुझे ${poseDetails.length} आसन मिले: $poses. और ${breathingDetails.length} प्राणायाम: $breaths. सत्र बनाने के लिए 'मेरी दिनचर्या बनाओ' कहें.",
+    );
+  }
 
   /// Scroll the list to the bottom (used when arriving from the Home
   /// "Generate" button so the pinned Generate Routine button is in view).
@@ -145,6 +168,11 @@ class RecommendationsScreenState extends State<RecommendationsScreen> {
       error = "Could not load recommendations.";
     }
     if (mounted) setState(() => loading = false);
+    // Speak the recommendations for voice/accessibility users
+    if (error == null &&
+        (poseDetails.isNotEmpty || breathingDetails.isNotEmpty)) {
+      VoiceService.instance.announce(spokenSummary());
+    }
   }
 
   Widget _poseCard(Map<String, dynamic> pose) {

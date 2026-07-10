@@ -12,6 +12,7 @@ import '../theme/app_theme.dart';
 import 'welcome_screen.dart';
 import 'health_info_screen.dart';
 import 'progress_dashboard_screen.dart';
+import '../services/voice_service.dart';
 import '../Widgets/normal_language_switcher.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -23,6 +24,120 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _analyzing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Let the "logout" voice command work from anywhere
+    VoiceService.instance.addAction('logout', () => _logout());
+    // Voice: edit health data ("change weight to 50", "gender male")
+    VoiceService.instance.setProfileEditHandler(_handleVoiceEdit);
+  }
+
+  int? _parseNumber(String s) {
+    final digit = RegExp(r'\d+').firstMatch(s);
+    if (digit != null) return int.tryParse(digit.group(0)!);
+    const units = {
+      'zero': 0, 'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5,
+      'six': 6, 'seven': 7, 'eight': 8, 'nine': 9, 'ten': 10, 'eleven': 11,
+      'twelve': 12, 'thirteen': 13, 'fourteen': 14, 'fifteen': 15,
+      'sixteen': 16, 'seventeen': 17, 'eighteen': 18, 'nineteen': 19,
+    };
+    const tens = {
+      'twenty': 20, 'thirty': 30, 'forty': 40, 'fifty': 50, 'sixty': 60,
+      'seventy': 70, 'eighty': 80, 'ninety': 90,
+    };
+    int current = 0;
+    bool found = false;
+    for (final w in s.split(RegExp(r'\s+'))) {
+      if (tens.containsKey(w)) {
+        current += tens[w]!;
+        found = true;
+      } else if (units.containsKey(w)) {
+        current += units[w]!;
+        found = true;
+      } else if (w == 'hundred') {
+        current = (current == 0 ? 1 : current) * 100;
+        found = true;
+      }
+    }
+    return found ? current : null;
+  }
+
+  Future<void> _persistHealth(UserProvider provider) async {
+    try {
+      await ApiService.saveHealthProfile(provider.profile.userId, {
+        'height': provider.healthInfo.height,
+        'weight': provider.healthInfo.weight,
+        'activityLevel': provider.healthInfo.activityLevel,
+        'medicalConditions': provider.healthInfo.medicalConditions,
+        'focusBodyParts': provider.goals.focusBodyParts,
+        'goalTags': provider.goals.tags,
+        'routineDuration': provider.goals.routineDuration,
+      });
+    } catch (_) {}
+  }
+
+  Future<void> _handleVoiceEdit(String raw) async {
+    final s = raw.toLowerCase();
+    final provider = Provider.of<UserProvider>(context, listen: false);
+    final voice = VoiceService.instance;
+    final n = _parseNumber(s);
+
+    final isHeight = s.contains('height') ||
+        s.contains('hight') ||
+        s.contains('उंची') ||
+        s.contains('ऊंचाई');
+    // "weight" is often misheard as "wait" — treat it as weight when a number
+    // is present and it isn't a height command.
+    if (!isHeight &&
+        (s.contains('weight') || s.contains('वजन') || s.contains('wait'))) {
+      if (n == null) {
+        await voice.speak(t("Say the weight, like change weight to 60.",
+            "वजन सांगा, उदा. वजन ६० करा.", "वजन बताएं, जैसे वजन 60 करें."));
+        return;
+      }
+      final w = n.clamp(20, 200).toDouble();
+      provider.setHealthInfo(provider.healthInfo..weight = w);
+      await _persistHealth(provider);
+      if (mounted) setState(() {});
+      await voice.speak(t("Weight set to ${w.toInt()} kilograms.",
+          "वजन ${w.toInt()} किलो केले.", "वजन ${w.toInt()} किलो कर दिया."));
+      return;
+    }
+    if (isHeight) {
+      if (n == null) {
+        await voice.speak(t("Say the height in inches, like change height to 65.",
+            "उंची इंचात सांगा, उदा. उंची ६५ करा.",
+            "ऊंचाई इंच में बताएं, जैसे ऊंचाई 65 करें."));
+        return;
+      }
+      final h = n.clamp(36, 96).toDouble();
+      provider.setHealthInfo(provider.healthInfo..height = h);
+      await _persistHealth(provider);
+      if (mounted) setState(() {});
+      await voice.speak(t("Height set to ${h.toInt()} inches.",
+          "उंची ${h.toInt()} इंच केली.", "ऊंचाई ${h.toInt()} इंच कर दी."));
+      return;
+    }
+    if (s.contains('female') || s.contains('महिला') || s.contains('स्त्री')) {
+      provider.setAgeGender(provider.ageGroup, 'Female');
+      if (mounted) setState(() {});
+      await voice.speak(t("Gender set to female.", "लिंग स्त्री केले.",
+          "लिंग महिला कर दिया."));
+      return;
+    }
+    if (s.contains('male') || s.contains('पुरुष')) {
+      provider.setAgeGender(provider.ageGroup, 'Male');
+      if (mounted) setState(() {});
+      await voice.speak(t("Gender set to male.", "लिंग पुरुष केले.",
+          "लिंग पुरुष कर दिया."));
+      return;
+    }
+    await voice.speak(t("Say change weight, height, or gender.",
+        "वजन, उंची किंवा लिंग बदला म्हणा.",
+        "वजन, ऊंचाई या लिंग बदलें कहें."));
+  }
 
   String t(String en, String mr, String hn) => LanguageHelper.t(en, mr, hn);
 
@@ -347,6 +462,94 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             color: Colors.white),
                       ],
                     ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // ── VOICE / ACCESSIBILITY ───────────────────────────────
+                _sectionLabel(
+                  Icons.accessibility_new_rounded,
+                  t("Accessibility", "प्रवेशयोग्यता", "सुगम्यता"),
+                ),
+                const SizedBox(height: 8),
+                AppCard(
+                  margin: EdgeInsets.zero,
+                  child: AnimatedBuilder(
+                    animation: VoiceService.instance,
+                    builder: (context, _) {
+                      final on = VoiceService.instance.accessibilityMode;
+                      return Column(
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: AppColors.chipBg,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Icon(Icons.record_voice_over_rounded,
+                                    color: AppColors.accent, size: 18),
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      t("Voice Mode", "व्हॉईस मोड", "वॉइस मोड"),
+                                      style: AppTextStyles.bodyMedium(),
+                                    ),
+                                    Text(
+                                      t(
+                                        "Control the app by speaking",
+                                        "बोलून अ‍ॅप वापरा",
+                                        "बोलकर ऐप चलाएं",
+                                      ),
+                                      style: AppTextStyles.caption(),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Switch(
+                                value: on,
+                                activeColor: AppColors.accent,
+                                onChanged: (v) =>
+                                    VoiceService.instance.setAccessibilityMode(v),
+                              ),
+                            ],
+                          ),
+                          if (on) ...[
+                            const SizedBox(height: 8),
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: AppColors.accent.withOpacity(0.07),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.tips_and_updates_outlined,
+                                      color: AppColors.accent, size: 16),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      t(
+                                        'Try saying: "home", "explore", "diet", "assistant", "start", "read", or "help".',
+                                        'म्हणा: "होम", "एक्सप्लोर", "डाएट", "असिस्टंट", "स्टार्ट", "रीड" किंवा "हेल्प".',
+                                        'कहें: "होम", "एक्सप्लोर", "डाइट", "असिस्टेंट", "स्टार्ट", "रीड" या "हेल्प".',
+                                      ),
+                                      style: AppTextStyles.caption(
+                                          color: AppColors.accent),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ],
+                      );
+                    },
                   ),
                 ),
                 const SizedBox(height: 20),

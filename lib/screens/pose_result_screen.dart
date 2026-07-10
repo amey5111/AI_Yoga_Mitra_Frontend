@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../providers/user_provider.dart';
 import '../services/api_service.dart';
+import '../services/voice_service.dart';
 import '../utils/language_helper.dart';
 import '../theme/app_theme.dart';
 
@@ -67,6 +68,10 @@ class _PoseResultScreenState extends State<PoseResultScreen> {
         _fb = fb;
         _loading = false;
       });
+      // Read the feedback aloud for voice/accessibility users
+      final spoken = _spokenSummary(fb);
+      VoiceService.instance.setReader(() => spoken);
+      VoiceService.instance.announce(spoken);
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -81,6 +86,40 @@ class _PoseResultScreenState extends State<PoseResultScreen> {
     if (v == null) return [];
     if (v is List) return v.map((e) => e.toString()).toList();
     return [v.toString()];
+  }
+
+  /// Build a natural spoken version of the whole feedback report.
+  String _spokenSummary(Map<String, dynamic> fb) {
+    final score = fb['overall_score'] ?? 0;
+    final summary = (fb['performance_summary'] ?? '').toString();
+    final correct = _list(fb['poses_correct']);
+    final mistakes = _list(fb['mistakes']);
+    final improvements = _list(fb['improvements']);
+    final suggestions = _list(fb['suggestions']);
+    final enc = (fb['encouragement'] ?? '').toString();
+    final b = StringBuffer();
+    b.write('${t("Your session score is", "तुमचा स्कोर आहे", "आपका स्कोर है")} $score. ');
+    if (summary.isNotEmpty) b.write('$summary ');
+    if (correct.isNotEmpty) {
+      b.write('${t("Poses done correctly", "योग्य आसने", "सही आसन")}: ${correct.join(", ")}. ');
+    }
+    if (mistakes.isNotEmpty) {
+      b.write('${t("Mistakes", "चुका", "गलतियाँ")}: ${mistakes.join(". ")}. ');
+    }
+    if (improvements.isNotEmpty) {
+      b.write('${t("To improve", "सुधारणा", "सुधार")}: ${improvements.join(". ")}. ');
+    }
+    if (suggestions.isNotEmpty) {
+      b.write('${t("Suggestions", "सूचना", "सुझाव")}: ${suggestions.join(". ")}. ');
+    }
+    if (enc.isNotEmpty) b.write(enc);
+    return b.toString();
+  }
+
+  @override
+  void dispose() {
+    VoiceService.instance.clearReader();
+    super.dispose();
   }
 
   @override

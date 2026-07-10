@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../providers/user_provider.dart';
 import '../services/api_service.dart';
+import '../services/voice_service.dart';
 import '../utils/language_helper.dart';
 import '../theme/app_theme.dart';
 
@@ -11,10 +12,22 @@ class DietScreen extends StatefulWidget {
   const DietScreen({super.key, this.embedded = false});
 
   @override
-  State<DietScreen> createState() => _DietScreenState();
+  State<DietScreen> createState() => DietScreenState();
 }
 
-class _DietScreenState extends State<DietScreen> {
+class DietScreenState extends State<DietScreen> {
+  /// Voice: generate the plan on command.
+  void triggerGenerate() => _generate();
+
+  /// Voice: a speakable version of the current plan (or a prompt to generate).
+  String spokenSummary() {
+    if (_plan == null) {
+      return t("No diet plan yet. Say generate my diet plan.",
+          "अद्याप आहार योजना नाही. 'माझा डाएट प्लॅन तयार कर' म्हणा.",
+          "अभी डाइट प्लान नहीं है. 'मेरा डाइट प्लान बनाओ' कहें.");
+    }
+    return _spokenPlan(_plan!);
+  }
   bool _loading = true;
   String? _error;
   Map<String, dynamic>? _plan;
@@ -98,6 +111,12 @@ class _DietScreenState extends State<DietScreen> {
         _planText = (result['planText'] ?? '').toString();
         _loading = false;
       });
+      // Speak the plan aloud for voice/accessibility users
+      if (_plan != null) {
+        VoiceService.instance.announce(_spokenPlan(_plan!));
+      } else if (_planText.isNotEmpty) {
+        VoiceService.instance.announce(_planText);
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -115,6 +134,31 @@ class _DietScreenState extends State<DietScreen> {
     if (v == null) return [];
     if (v is List) return v.map((e) => e.toString()).toList();
     return [v.toString()];
+  }
+
+  /// Natural spoken version of the whole diet plan.
+  String _spokenPlan(Map<String, dynamic> plan) {
+    final meals = (plan['meals'] as Map<String, dynamic>?) ?? {};
+    final b = StringBuffer();
+    b.write(t("Here is your diet plan. ", "ही तुमची आहार योजना. ",
+        "यह आपका डाइट प्लान है. "));
+    void section(String label, dynamic v) {
+      final items = _stringList(v);
+      if (items.isNotEmpty) b.write('$label: ${items.join(", ")}. ');
+    }
+    section(t("Guidelines", "मार्गदर्शन", "दिशानिर्देश"),
+        plan['daily_guidelines']);
+    section(t("Breakfast", "नाश्ता", "नाश्ता"), meals['breakfast']);
+    section(t("Mid morning", "सकाळचा खाऊ", "मध्य सुबह"), meals['mid_morning']);
+    section(t("Lunch", "दुपारचे जेवण", "दोपहर का भोजन"), meals['lunch']);
+    section(t("Evening snack", "संध्याकाळचा खाऊ", "शाम का नाश्ता"),
+        meals['evening_snack']);
+    section(t("Dinner", "रात्रीचे जेवण", "रात का भोजन"), meals['dinner']);
+    section(t("Foods to avoid", "टाळावे पदार्थ", "इनसे बचें"),
+        plan['foods_to_avoid']);
+    final hydration = (plan['hydration'] ?? '').toString();
+    if (hydration.isNotEmpty) b.write('$hydration ');
+    return b.toString();
   }
 
   Widget _sectionCard(String title, IconData icon, List<String> items) {

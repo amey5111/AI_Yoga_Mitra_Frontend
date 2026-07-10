@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/api_service.dart';
+import '../services/voice_service.dart';
 import '../utils/language_helper.dart';
 import '../theme/app_theme.dart';
 import '../widgets/normal_language_switcher.dart';
@@ -52,6 +53,57 @@ class _BreathingDetailScreenState extends State<BreathingDetailScreen> {
       technique = t;
     } catch (_) {}
     if (mounted) setState(() => loading = false);
+    // Voice: register the how-to reader (spoken on "read", not auto — auto
+    // readout echoes into the mic) and let "start breathing" launch THIS one.
+    if (technique != null) {
+      final voice = VoiceService.instance;
+      voice.setReader(_spokenGuide);
+      voice.addAction('startBreathing', () {
+        if (mounted) _openGuidedBreathing(technique!);
+      });
+    }
+  }
+
+  String _spokenGuide() {
+    final tq = technique;
+    if (tq == null) return '';
+    final name = (tq['name']?[langCode] ?? '').toString();
+    List<String> asList(dynamic v) {
+      if (v == null) return [];
+      if (v is List) return v.map((e) => e.toString()).toList();
+      return [v.toString()];
+    }
+
+    final benefits = asList(tq['primary_benefits']?[langCode]);
+    final steps = asList(tq['instructions']?[langCode]);
+    final pattern = asList(tq['breathing_pattern']?[langCode]);
+    final b = StringBuffer();
+    b.write('$name. ');
+    if (benefits.isNotEmpty) {
+      b.write('${LanguageHelper.t("Benefits", "फायदे", "लाभ")}: ${benefits.take(2).join(", ")}. ');
+    }
+    if (pattern.isNotEmpty) {
+      b.write('${LanguageHelper.t("Pattern", "पद्धत", "पैटर्न")}: ${pattern.join(", ")}. ');
+    }
+    if (steps.isNotEmpty) {
+      b.write('${LanguageHelper.t("How to do it", "कसे करावे", "कैसे करें")}: ');
+      for (var i = 0; i < steps.length && i < 6; i++) {
+        b.write('${i + 1}. ${steps[i]} ');
+      }
+    }
+    b.write(LanguageHelper.t("Say start breathing to begin.",
+        "सुरू करण्यासाठी स्टार्ट ब्रीदिंग म्हणा.",
+        "शुरू करने के लिए स्टार्ट ब्रीदिंग कहें."));
+    return b.toString();
+  }
+
+  @override
+  void dispose() {
+    final voice = VoiceService.instance;
+    voice.clearReader();
+    voice.removeAction('startBreathing');
+    voice.notifyBreathClosed(widget.id);
+    super.dispose();
   }
 
   Widget _chip(String text, {IconData? icon}) {

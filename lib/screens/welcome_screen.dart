@@ -5,6 +5,7 @@ import 'login_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/language_helper.dart';
 import '../theme/app_theme.dart';
+import '../services/voice_service.dart';
 
 class WelcomeScreen extends StatefulWidget {
   @override
@@ -44,6 +45,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     _animController.forward();
 
     loadLanguage();
+    _setupVoice();
 
     Future.delayed(const Duration(seconds: 4), () {
       if (mounted) {
@@ -52,6 +54,46 @@ class _WelcomeScreenState extends State<WelcomeScreen>
           buttonRadius = 1.5;
         });
       }
+    });
+  }
+
+  void _setupVoice() {
+    final voice = VoiceService.instance;
+    voice.setActions({
+      'login': () {
+        if (mounted) {
+          Navigator.push(context,
+              MaterialPageRoute(builder: (_) => const LoginScreen()));
+        }
+      },
+      'start': () {
+        if (mounted) {
+          Navigator.push(
+              context, MaterialPageRoute(builder: (_) => ProfileScreen()));
+        }
+      },
+    });
+    voice.setReader(() => LanguageHelper.t(
+          "This is the Yoga Mitra welcome screen. Say login to sign in, or start to create a new account.",
+          "हे योगा मित्र स्वागत स्क्रीन आहे. लॉगिन किंवा स्टार्ट म्हणा.",
+          "यह योगा मित्र वेलकम स्क्रीन है. लॉगिन या स्टार्ट कहें.",
+        ));
+
+    // Greet ONCE on app launch (only when the voice assistant is on).
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!voice.accessibilityMode) return;
+      if (voice.welcomed) {
+        // Already welcomed this launch — just resume listening quietly.
+        voice.startListening();
+        return;
+      }
+      await voice.speak(
+        LanguageHelper.t(
+          "Welcome to Yoga Mitra, your A I yoga companion. Say login to sign in, or say start to create a new account. Say help anytime.",
+          "योगा मित्रमध्ये स्वागत आहे. साइन इन साठी लॉगिन म्हणा, किंवा नवीन खात्यासाठी स्टार्ट म्हणा. मदतीसाठी हेल्प म्हणा.",
+          "योगा मित्र में स्वागत है. साइन इन के लिए लॉगिन कहें, या नए खाते के लिए स्टार्ट कहें. मदद के लिए हेल्प कहें.",
+        ),
+      );
     });
   }
 

@@ -95,6 +95,14 @@ class ApiService {
   /* ---------------------------------------------------------
      BREATHING
   ---------------------------------------------------------- */
+  static Future<List<dynamic>> fetchAllBreathing() async {
+    try {
+      final resp = await http.get(Uri.parse('$baseUrl/breathing'));
+      if (resp.statusCode == 200) return jsonDecode(resp.body);
+    } catch (_) {}
+    return [];
+  }
+
   static Future<Map<String, dynamic>?> fetchBreathingById(int id) async {
     final resp = await http.get(Uri.parse('$baseUrl/breathing/$id'));
     if (resp.statusCode == 200) {
@@ -332,6 +340,23 @@ class ApiService {
     if (resp.statusCode == 200) {
       return _deepConvert(jsonDecode(resp.body)) as Map<String, dynamic>;
     }
+    return null;
+  }
+
+  /// Short, targeted food advice for a spoken complaint (voice diet helper).
+  static Future<String?> foodForConcern(String concern, String language) async {
+    try {
+      final resp = await http
+          .post(
+            Uri.parse('$baseUrl/diet/food-for'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'concern': concern, 'language': language}),
+          )
+          .timeout(const Duration(seconds: 60));
+      if (resp.statusCode == 200) {
+        return (jsonDecode(resp.body)['advice'] ?? '').toString();
+      }
+    } catch (_) {}
     return null;
   }
 

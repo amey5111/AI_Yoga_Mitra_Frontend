@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/api_service.dart';
+import '../services/voice_service.dart';
 import '../utils/language_helper.dart';
 import '../theme/app_theme.dart';
 
@@ -56,10 +57,36 @@ class _YogaGptScreenState extends State<YogaGptScreen>
         ),
       ),
     );
+
+    // Voice: any spoken question (not a global command) is asked to the bot,
+    // and the reply is read aloud. Also expose "read" of the last reply.
+    final voice = VoiceService.instance;
+    voice.setFreeTextHandler((text) {
+      if (!mounted) return;
+      _send(text);
+    });
+    voice.setReader(() {
+      final lastBot = _messages.lastWhere(
+        (m) => m.role == 'assistant',
+        orElse: () => _ChatMessage('assistant', ''),
+      );
+      return lastBot.content;
+    });
+    if (voice.accessibilityMode) {
+      voice.announce(t(
+        "You are in the yoga assistant. Ask me any yoga question.",
+        "तुम्ही योग असिस्टंटमध्ये आहात. कोणताही योग प्रश्न विचारा.",
+        "आप योग असिस्टेंट में हैं. कोई भी योग सवाल पूछें.",
+      ));
+    }
   }
 
   @override
   void dispose() {
+    // Restore global voice routing when leaving the chat
+    final voice = VoiceService.instance;
+    voice.setFreeTextHandler(null);
+    voice.clearReader();
     _inputController.dispose();
     _scrollController.dispose();
     _focusNode.dispose();
@@ -99,6 +126,8 @@ class _YogaGptScreenState extends State<YogaGptScreen>
         _messages.add(_ChatMessage('assistant', reply));
         _sending = false;
       });
+      // Read the assistant's reply aloud for voice/accessibility users
+      VoiceService.instance.announce(reply);
     } catch (e) {
       if (!mounted) return;
       setState(() {

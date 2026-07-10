@@ -12,6 +12,7 @@ import 'screens/welcome_screen.dart';
 import 'screens/main_shell.dart';
 import 'services/api_service.dart';
 import 'services/reminder_service.dart'; // ✅ ADD THIS IMPORT
+import 'services/voice_service.dart';
 import 'models/user_profile.dart';
 import 'theme/app_theme.dart';
 
@@ -21,6 +22,9 @@ void main() async {
 
   // ✅ Initialize the notification system once at startup
   await ReminderService.init();
+
+  // Voice accessibility (TTS + speech recognition)
+  await VoiceService.instance.init();
 
   runApp(
     ChangeNotifierProvider(
@@ -120,6 +124,7 @@ class _YogaMitraAppState extends State<YogaMitraApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
+      navigatorKey: appNavigatorKey,
       theme: buildAppTheme(),
       home: startScreen,
     );

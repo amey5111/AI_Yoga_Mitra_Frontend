@@ -31,7 +31,7 @@ android {
 
     defaultConfig {
         applicationId = "com.yogamitra.app"
-        minSdk = flutter.minSdkVersion
+        minSdk = maxOf(24, flutter.minSdkVersion) // Vosk plugin needs 24+
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName

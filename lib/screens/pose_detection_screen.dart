@@ -18,6 +18,7 @@ import '../services/pose_hold_service.dart';
 import 'dart:async';
 import 'package:flutter/services.dart';
 import 'pose_result_screen.dart';
+import '../services/voice_service.dart';
 
 class PoseDetectionScreen extends StatefulWidget {
   final int poseId;
@@ -88,6 +89,54 @@ class _PoseDetectionScreenState extends State<PoseDetectionScreen> {
   int _sessionVisFails = 0;
   int _maxHoldReached = 0;
   bool _finishing = false;
+
+  // ── Voice pose-correction cues ─────────────────────────────────────────
+  final _voice = VoiceService.instance;
+  String _lastCue = '';
+  DateTime? _lastCueAt;
+  bool _completeAnnounced = false;
+
+  void _maybeSpeakCue() {
+    if (!_voice.accessibilityMode) return;
+
+    String cue;
+    if (poseCompleted) {
+      if (_completeAnnounced) return;
+      _completeAnnounced = true;
+      cue = _voice.t(
+        "Excellent! Pose complete. Say finish to see your feedback.",
+        "उत्तम! आसन पूर्ण. फीडबॅकसाठी फिनिश म्हणा.",
+        "बहुत बढ़िया! आसन पूर्ण. फीडबैक के लिए फिनिश कहें.",
+      );
+    } else if (!isBodyVisible) {
+      cue = _voice.t("Please move your full body into the frame.",
+          "कृपया पूर्ण शरीर फ्रेममध्ये आणा.", "कृपया पूरा शरीर फ्रेम में लाएं.");
+    } else if (smoothedSimilarity >= 80) {
+      cue = _voice.t("Great, hold it steady.", "छान, स्थिर धरा.",
+          "बढ़िया, स्थिर रखें.");
+    } else if (smoothedSimilarity >= 60) {
+      cue = _voice.t("Almost there, adjust slightly.",
+          "जवळजवळ झाले, थोडे समायोजित करा.", "लगभग हो गया, थोड़ा समायोजित करें.");
+    } else if (smoothedSimilarity >= 30) {
+      cue = _voice.t("Getting closer, keep adjusting.",
+          "जवळ येत आहात, समायोजित करत राहा.", "करीब आ रहे हैं, समायोजित करते रहें.");
+    } else {
+      cue = _voice.t("Adjust your posture to match the pose.",
+          "आसनाशी जुळण्यासाठी स्थिती बदला.", "आसन से मिलान हेतु मुद्रा बदलें.");
+    }
+
+    final now = DateTime.now();
+    final changed = cue != _lastCue;
+    final elapsed = _lastCueAt == null
+        ? const Duration(seconds: 99)
+        : now.difference(_lastCueAt!);
+    // Speak when the cue changes (min 3s gap) or every 6s for the same cue
+    if ((changed && elapsed.inSeconds >= 3) || elapsed.inSeconds >= 6) {
+      _lastCue = cue;
+      _lastCueAt = now;
+      _voice.speak(cue, resumeListening: false);
+    }
+  }
 
   double get holdProgress {
     return currentHoldTime / 15;
@@ -198,6 +247,21 @@ class _PoseDetectionScreenState extends State<PoseDetectionScreen> {
     _debugManifest();
     _loadReferences();
     _initialize();
+
+    // Voice: register finish-by-voice + announce guidance
+    _voice.addAction('finish', () {
+      if (mounted) _finishSession();
+    });
+    if (_voice.accessibilityMode) {
+      _voice.speak(
+        _voice.t(
+          "Starting ${widget.poseName} guidance. Face the camera and match the pose. I will guide you. Say finish when you are done.",
+          "${widget.poseName} मार्गदर्शन सुरू. कॅमेऱ्यासमोर आसन जुळवा. मी मार्गदर्शन करेन. पूर्ण झाल्यावर फिनिश म्हणा.",
+          "${widget.poseName} मार्गदर्शन शुरू. कैमरे के सामने आसन मिलाएं. मैं मार्गदर्शन करूँगा. पूरा होने पर फिनिश कहें.",
+        ),
+        resumeListening: false,
+      );
+    }
   }
 
   Future<void> _debugManifest() async {
@@ -360,6 +424,9 @@ class _PoseDetectionScreenState extends State<PoseDetectionScreen> {
       if (mounted) {
         setState(() {});
       }
+
+      // Spoken pose-correction guidance (accessibility mode)
+      _maybeSpeakCue();
     } catch (e, stack) {
       debugPrint("POSE DETECTION ERROR = $e");
 

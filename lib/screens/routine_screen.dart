@@ -19,6 +19,7 @@ import 'pose_detection_screen.dart';
 import 'yoga_gpt_screen.dart';
 import 'diet_screen.dart';
 import '../theme/app_theme.dart';
+import '../services/voice_service.dart';
 
 class RoutineScreen extends StatefulWidget {
   final Map<String, dynamic>? routine;
@@ -57,6 +58,51 @@ class RoutineScreenState extends State<RoutineScreen> {
       _forceRefresh = true;
     });
     await _loadRoutine();
+  }
+
+  /// Voice: a speakable summary of the current routine.
+  String spokenSummary() {
+    if (routineSteps.isEmpty) {
+      return t(
+        "You have no routine yet. Say generate to build one, or say explore for recommendations.",
+        "अद्याप दिनचर्या नाही. तयार करण्यासाठी जनरेट म्हणा, किंवा शिफारसींसाठी एक्सप्लोर म्हणा.",
+        "अभी कोई दिनचर्या नहीं. बनाने के लिए जनरेट कहें, या सिफारिशों के लिए एक्सप्लोर कहें.",
+      );
+    }
+    final total = routineSteps.fold<int>(
+        0, (s, e) => s + _toInt(e['duration'] ?? 0));
+    final mins = (total / 60).round();
+    final names = routineSteps
+        .map((e) => (e['name']?[langCode] ?? '').toString())
+        .where((n) => n.isNotEmpty)
+        .join(', ');
+    return t(
+      "Your routine has ${routineSteps.length} steps, about $mins minutes. It includes: $names. Say start to begin practice.",
+      "तुमच्या दिनचर्येत ${routineSteps.length} पायऱ्या, सुमारे $mins मिनिटे. यात आहे: $names. सराव सुरू करण्यासाठी स्टार्ट म्हणा.",
+      "आपकी दिनचर्या में ${routineSteps.length} चरण, लगभग $mins मिनट. इसमें है: $names. अभ्यास शुरू करने के लिए स्टार्ट कहें.",
+    );
+  }
+
+  void _startPractice() {
+    if (routineSteps.isEmpty) {
+      (widget.onGenerate ?? () => widget.onSwitchTab?.call(1))();
+      return;
+    }
+    final firstPose = routineSteps.firstWhere(
+      (s) => s['type'] != 'breathing',
+      orElse: () => {},
+    );
+    if (firstPose.isNotEmpty) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => PoseDetectionScreen(
+            poseId: _toInt(firstPose['id']),
+            poseName: firstPose['name']?['en'] ?? '',
+          ),
+        ),
+      );
+    }
   }
 
   Future<void> _openEditRoutine() async {
@@ -110,6 +156,16 @@ class RoutineScreenState extends State<RoutineScreen> {
   void initState() {
     super.initState();
     _loadRoutine();
+    // Voice actions available from home
+    VoiceService.instance.addAction('start', () {
+      if (mounted) _startPractice();
+    });
+    VoiceService.instance.addAction('reminder', () {
+      if (mounted) _handleSetReminderTap();
+    });
+    VoiceService.instance.addAction('editRoutine', () {
+      if (mounted && routineSteps.isNotEmpty) _openEditRoutine();
+    });
   }
 
   Future<void> _loadRoutine() async {
@@ -1046,28 +1102,7 @@ class RoutineScreenState extends State<RoutineScreen> {
                             // When there's no routine yet, this takes the user
                             // to the Explore tab AND scrolls to the Generate
                             // Routine button; otherwise it starts pose practice.
-                            onPressed: routineSteps.isEmpty
-                                ? () => (widget.onGenerate ??
-                                        () => widget.onSwitchTab?.call(1))()
-                                : () {
-                                    // Launch pose detection for the first yoga pose
-                                    final firstPose = routineSteps.firstWhere(
-                                      (s) => s['type'] != 'breathing',
-                                      orElse: () => {},
-                                    );
-                                    if (firstPose.isNotEmpty) {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) => PoseDetectionScreen(
-                                            poseId: _toInt(firstPose['id']),
-                                            poseName:
-                                                firstPose['name']?['en'] ?? '',
-                                          ),
-                                        ),
-                                      );
-                                    }
-                                  },
+                            onPressed: _startPractice,
                           ),
                         ),
                       ],
