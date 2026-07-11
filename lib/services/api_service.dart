@@ -6,6 +6,7 @@ class ApiService {
   // static const String baseUrl = 'http://localhost:5000/api';
   // static const String rootUrl = 'http://localhost:5000';
 
+  // Production: Render (works anywhere, no PC/USB needed)
   static const String baseUrl = 'https://yoga-mitra-backend.onrender.com/api';
   static const String rootUrl = 'https://yoga-mitra-backend.onrender.com/';
 
