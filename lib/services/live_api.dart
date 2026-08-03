@@ -230,4 +230,30 @@ class LiveApi {
       body: jsonEncode({'userId': u['userId'], 'stars': stars}),
     );
   }
+
+  // ---- instructor profile ----
+  static Future<Map<String, dynamic>> getProfile(String userId) async {
+    final resp = await http.get(Uri.parse('$_base/profile/$userId'));
+    if (resp.statusCode == 200) {
+      return Map<String, dynamic>.from(jsonDecode(resp.body));
+    }
+    return {};
+  }
+
+  static Future<void> saveProfile({
+    String? bio,
+    String? specialty,
+    String? photo,
+  }) async {
+    final u = await currentUser();
+    final body = <String, dynamic>{};
+    if (bio != null) body['bio'] = bio;
+    if (specialty != null) body['specialty'] = specialty;
+    if (photo != null) body['photo'] = photo;
+    await http.post(
+      Uri.parse('$_base/profile/${u['userId']}'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(body),
+    );
+  }
 }

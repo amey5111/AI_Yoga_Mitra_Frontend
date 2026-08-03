@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../services/live_api.dart';
 import '../services/api_service.dart';
 import 'create_live_class_screen.dart';
+import 'instructor_profile_screen.dart';
 import 'live_broadcast_screen.dart';
 import 'recorded_replay_screen.dart';
 import 'welcome_screen.dart';
@@ -276,6 +277,18 @@ class _InstructorHomeScreenState extends State<InstructorHomeScreen> {
         foregroundColor: Colors.white,
         title: const Text('Instructor Dashboard'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.person_outline_rounded),
+            tooltip: 'Edit profile',
+            onPressed: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => const InstructorProfileScreen()),
+              );
+              _load();
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.logout_rounded),
             tooltip: 'Logout',
