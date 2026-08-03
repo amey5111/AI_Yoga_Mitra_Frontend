@@ -10,6 +10,7 @@ import 'package:provider/provider.dart';
 import 'providers/user_provider.dart';
 import 'screens/welcome_screen.dart';
 import 'screens/main_shell.dart';
+import 'screens/instructor_home_screen.dart';
 import 'services/api_service.dart';
 import 'services/reminder_service.dart'; // ✅ ADD THIS IMPORT
 import 'services/voice_service.dart';
@@ -72,6 +73,14 @@ class _YogaMitraAppState extends State<YogaMitraApp> {
         ),
       );
       provider.setAgeGender(session['ageGroup'] ?? '', session['gender'] ?? '');
+
+      // Instructors get a completely separate experience (no user tabs).
+      if ((session['role'] ?? 'user') == 'instructor') {
+        if (mounted) {
+          setState(() => startScreen = const InstructorHomeScreen());
+        }
+        return;
+      }
 
       debugPrint('=== FETCHING ROUTINE FOR: ${session["userId"]}');
 

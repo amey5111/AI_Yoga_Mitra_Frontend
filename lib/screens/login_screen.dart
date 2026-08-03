@@ -7,6 +7,8 @@ import '../models/user_profile.dart';
 import '../utils/language_helper.dart';
 import '../theme/app_theme.dart';
 import 'main_shell.dart';
+import 'instructor_home_screen.dart';
+import 'instructor_signup_screen.dart';
 import 'profile_screen.dart';
 import '../Widgets/language_switcher.dart';
 
@@ -49,19 +51,23 @@ class _LoginScreenState extends State<LoginScreen> {
 
       final routine = await ApiService.fetchUserRoutine(response["userId"]);
 
+      final role = response["role"] ?? "user";
+
       await ApiService.saveSession(
         response["userId"],
         response["name"],
         response["email"],
         response["ageGroup"] ?? "",
         response["gender"] ?? "",
+        role: role,
       );
 
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(
-          builder: (_) =>
-              MainShell(initialRoutine: routine ?? {"routine": []}),
+          builder: (_) => role == "instructor"
+              ? const InstructorHomeScreen()
+              : MainShell(initialRoutine: routine ?? {"routine": []}),
         ),
         (route) => false,
       );
@@ -290,6 +296,32 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ),
                                 ),
                               ],
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 14),
+
+                      // Become an instructor
+                      Center(
+                        child: GestureDetector(
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const InstructorSignupScreen(),
+                            ),
+                          ),
+                          child: Text(
+                            LanguageHelper.t(
+                              "Become an Instructor",
+                              "प्रशिक्षक व्हा",
+                              "प्रशिक्षक बनें",
+                            ),
+                            style: GoogleFonts.inter(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFF215E54),
                             ),
                           ),
                         ),

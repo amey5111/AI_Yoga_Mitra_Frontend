@@ -8,6 +8,8 @@ import 'diet_screen.dart';
 import 'settings_screen.dart';
 import 'yoga_gpt_screen.dart';
 import 'progress_dashboard_screen.dart';
+import 'live_classes_screen.dart';
+import '../services/live_api.dart';
 import '../services/voice_service.dart';
 import '../widgets/voice_button.dart';
 import '../utils/language_helper.dart';
@@ -36,6 +38,7 @@ class _MainShellState extends State<MainShell> {
   late final List<Widget> _pages;
 
   final _voice = VoiceService.instance;
+  bool _hasLiveClass = false;
 
   static const _tabNames = [
     ["Home", "होम", "होम"],
@@ -82,6 +85,9 @@ class _MainShellState extends State<MainShell> {
     // Welcome + command help — ONCE per app launch
     WidgetsBinding.instance.addPostFrameCallback((_) => _voice.welcomeOnLaunch());
 
+    // Show the Live entry only when a class is actually live.
+    _checkLive();
+
     _pages = [
       RoutineScreen(
         key: _homeKey,
@@ -125,6 +131,14 @@ class _MainShellState extends State<MainShell> {
   void dispose() {
     if (identical(_voice.tabSwitcher, _switchTo)) _voice.tabSwitcher = null;
     super.dispose();
+  }
+
+  Future<void> _checkLive() async {
+    try {
+      final feed = await LiveApi.feed();
+      final live = (feed['live'] as List?) ?? [];
+      if (mounted) setState(() => _hasLiveClass = live.isNotEmpty);
+    } catch (_) {}
   }
 
   void _switchTo(int i) {
@@ -177,6 +191,13 @@ class _MainShellState extends State<MainShell> {
                 right: 0,
                 child: const Center(child: VoiceStatusIndicator()),
               ),
+              // Live entry (top-right) — only when a class is actually live.
+              if (_hasLiveClass)
+                Positioned(
+                  top: MediaQuery.of(context).padding.top + 6,
+                  right: 10,
+                  child: _liveButton(),
+                ),
             ],
           ),
           floatingActionButton: _yogaGptButton(),
@@ -222,6 +243,45 @@ class _MainShellState extends State<MainShell> {
           ),
           child: const Icon(Icons.smart_toy_rounded,
               color: Colors.white, size: 28),
+        ),
+      ),
+    );
+  }
+
+  Widget _liveButton() {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const LiveClassesScreen()),
+        ),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: Colors.red,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.red.withOpacity(0.35),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.sensors, color: Colors.white, size: 16),
+              SizedBox(width: 4),
+              Text('Live',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700)),
+            ],
+          ),
         ),
       ),
     );

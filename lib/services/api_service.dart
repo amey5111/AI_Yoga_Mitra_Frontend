@@ -3,8 +3,9 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
+  // Local testing (phone bridged with: adb reverse tcp:5000 tcp:5000)
   // static const String baseUrl = 'http://localhost:5000/api';
-  // static const String rootUrl = 'http://localhost:5000';
+  // static const String rootUrl = 'http://localhost:5000/';
 
   // Production: Render (works anywhere, no PC/USB needed)
   static const String baseUrl = 'https://yoga-mitra-backend.onrender.com/api';
@@ -32,8 +33,9 @@ class ApiService {
     String email,
     String password,
     String ageGroup,
-    String gender,
-  ) async {
+    String gender, {
+    String role = "user",
+  }) async {
     final resp = await http.post(
       Uri.parse("$baseUrl/auth/register"),
       headers: {"Content-Type": "application/json"},
@@ -43,6 +45,7 @@ class ApiService {
         "password": password,
         "ageGroup": ageGroup,
         "gender": gender,
+        "role": role,
       }),
     );
     final data = jsonDecode(resp.body);
@@ -212,14 +215,16 @@ class ApiService {
     String name,
     String email,
     String ageGroup,
-    String gender,
-  ) async {
+    String gender, {
+    String role = "user",
+  }) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString("userId", userId);
     await prefs.setString("name", name);
     await prefs.setString("email", email);
     await prefs.setString("ageGroup", ageGroup);
     await prefs.setString("gender", gender);
+    await prefs.setString("role", role);
   }
 
   static Future<Map<String, String>?> loadSession() async {
@@ -232,6 +237,7 @@ class ApiService {
       "email": prefs.getString("email") ?? "",
       "ageGroup": prefs.getString("ageGroup") ?? "",
       "gender": prefs.getString("gender") ?? "",
+      "role": prefs.getString("role") ?? "user",
     };
   }
 

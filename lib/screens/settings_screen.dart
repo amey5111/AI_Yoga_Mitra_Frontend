@@ -12,6 +12,7 @@ import '../theme/app_theme.dart';
 import 'welcome_screen.dart';
 import 'health_info_screen.dart';
 import 'progress_dashboard_screen.dart';
+import 'my_live_sessions_screen.dart';
 import '../services/voice_service.dart';
 import '../Widgets/normal_language_switcher.dart';
 
@@ -460,6 +461,65 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         const Icon(Icons.chevron_right_rounded,
                             color: Colors.white),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // ── MY LIVE SESSIONS ────────────────────────────────────
+                GestureDetector(
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const MyLiveSessionsScreen()),
+                  ),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppColors.bgCard,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: AppShadows.soft,
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: AppColors.chipBg,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Icons.videocam_rounded,
+                              color: AppColors.accent, size: 22),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                t("My Live Sessions", "माझी लाइव्ह सत्रे",
+                                    "मेरे लाइव सत्र"),
+                                style: GoogleFonts.poppins(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                t("Classes you joined & time spent",
+                                    "सहभागी वर्ग व वेळ", "जॉइन किए वर्ग व समय"),
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(Icons.chevron_right_rounded,
+                            color: AppColors.textSecondary),
                       ],
                     ),
                   ),
