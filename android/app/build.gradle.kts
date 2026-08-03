@@ -48,13 +48,14 @@ android {
 
     buildTypes {
         getByName("release") {
-            signingConfig = signingConfigs.getByName("release")
-            isMinifyEnabled = true
+            // Use the real upload keystore when configured (key.properties present);
+            // otherwise fall back to debug signing so a shareable release APK still builds.
+            signingConfig = if (keystorePropertiesFile.exists())
+                signingConfigs.getByName("release")
+            else
+                signingConfigs.getByName("debug")
+            isMinifyEnabled = false      // keep Agora / video_player classes intact
             isShrinkResources = false
-            proguardFiles(                                             // ← ADDED
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
         }
     }
 

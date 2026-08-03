@@ -413,6 +413,22 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
                 onPressed: _openQuestions,
               ),
               const SizedBox(width: 8),
+              // On stage (host-approved): control your own mic + camera.
+              if (_isSpeaker) ...[
+                IconButton(
+                  style: IconButton.styleFrom(backgroundColor: Colors.white24),
+                  icon: Icon(_eng.micOn ? Icons.mic : Icons.mic_off,
+                      color: _eng.micOn ? Colors.white : Colors.red),
+                  onPressed: () => _eng.toggleMic(),
+                ),
+                IconButton(
+                  style: IconButton.styleFrom(backgroundColor: Colors.white24),
+                  icon: Icon(_eng.camOn ? Icons.videocam : Icons.videocam_off,
+                      color: _eng.camOn ? Colors.white : Colors.red),
+                  onPressed: () => _eng.toggleCam(),
+                ),
+                const SizedBox(width: 4),
+              ],
               if (_isSpeaker)
                 FloatingActionButton.small(
                   heroTag: 'stage',

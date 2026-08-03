@@ -14,6 +14,7 @@ class _CreateLiveClassScreenState extends State<CreateLiveClassScreen> {
   final _title = TextEditingController();
   final _desc = TextEditingController();
   bool _goLiveNow = true;
+  bool _private = false;
   DateTime? _scheduledAt;
   bool _saving = false;
 
@@ -65,6 +66,7 @@ class _CreateLiveClassScreenState extends State<CreateLiveClassScreen> {
         description: _desc.text.trim(),
         goLiveNow: _goLiveNow,
         scheduledAt: _goLiveNow ? null : _scheduledAt,
+        visibility: _private ? 'private' : 'public',
       );
       if (!mounted) return;
       if (_goLiveNow) {
@@ -75,6 +77,15 @@ class _CreateLiveClassScreenState extends State<CreateLiveClassScreen> {
           ),
         );
       } else {
+        final code = c['joinCode'] ?? '';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(_private
+                ? 'Private class created. Share code: $code'
+                : 'Class scheduled. Code: $code'),
+            duration: const Duration(seconds: 5),
+          ),
+        );
         Navigator.pop(context, true);
       }
     } catch (e) {
@@ -121,6 +132,16 @@ class _CreateLiveClassScreenState extends State<CreateLiveClassScreen> {
             title: const Text('Go live now'),
             subtitle: const Text('Turn off to schedule for later'),
             onChanged: (v) => setState(() => _goLiveNow = v),
+          ),
+          SwitchListTile(
+            value: _private,
+            activeColor: _green,
+            secondary: Icon(_private ? Icons.lock : Icons.public,
+                color: _green),
+            title: const Text('Private (invite only)'),
+            subtitle:
+                const Text('Only people with the join code can enter'),
+            onChanged: (v) => setState(() => _private = v),
           ),
           if (!_goLiveNow)
             ListTile(

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import '../services/live_api.dart';
 import '../services/live_engine.dart';
@@ -337,7 +338,7 @@ class _LiveBroadcastScreenState extends State<LiveBroadcastScreen> {
               ],
               const SizedBox(width: 8),
               SizedBox(
-                width: 180,
+                width: 110,
                 child: Text(
                   widget.liveClass['title'] ?? 'Live class',
                   overflow: TextOverflow.ellipsis,
@@ -345,6 +346,38 @@ class _LiveBroadcastScreenState extends State<LiveBroadcastScreen> {
                       color: Colors.white, fontWeight: FontWeight.w600),
                 ),
               ),
+              if ((widget.liveClass['joinCode'] ?? '')
+                  .toString()
+                  .isNotEmpty) ...[
+                const SizedBox(width: 6),
+                GestureDetector(
+                  onTap: () {
+                    Clipboard.setData(ClipboardData(
+                        text: widget.liveClass['joinCode'].toString()));
+                    _snack('Join code copied');
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                        color: _green,
+                        borderRadius: BorderRadius.circular(6)),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(widget.liveClass['joinCode'].toString(),
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700)),
+                        const SizedBox(width: 4),
+                        const Icon(Icons.copy,
+                            color: Colors.white, size: 12),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
         ),

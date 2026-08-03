@@ -52,6 +52,63 @@ class _LiveClassesScreenState extends State<LiveClassesScreen> {
 
   bool _isMine(Map c) => (c['instructorId'] ?? '') == _myId;
 
+  Future<void> _joinWithCode() async {
+    final ctrl = TextEditingController();
+    final code = await showDialog<String>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Join with code'),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          textCapitalization: TextCapitalization.characters,
+          decoration: const InputDecoration(
+            hintText: 'e.g. YM-4K2P',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, ctrl.text.trim()),
+            child: const Text('Join'),
+          ),
+        ],
+      ),
+    );
+    if (code == null || code.isEmpty) return;
+    final c = await LiveApi.getByCode(code);
+    if (!mounted) return;
+    if (c == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No class found for that code')),
+      );
+      return;
+    }
+    if (c['status'] == 'ended') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => RecordedReplayScreen(
+            title: c['title'] ?? 'Recording',
+            url: c['recordingUrl'] ?? '',
+          ),
+        ),
+      );
+    } else {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) =>
+              LiveWatchScreen(liveClass: Map<String, dynamic>.from(c)),
+        ),
+      ).then((_) => _load());
+    }
+  }
+
   void _open(Map c) {
     final status = c['status'];
     if (status == 'live') {
@@ -83,6 +140,15 @@ class _LiveClassesScreenState extends State<LiveClassesScreen> {
         title: const Text('Live Training'),
         backgroundColor: const Color(0xFF6C63FF),
         foregroundColor: Colors.white,
+        actions: [
+          TextButton.icon(
+            onPressed: _joinWithCode,
+            icon: const Icon(Icons.vpn_key_rounded,
+                color: Colors.white, size: 18),
+            label: const Text('Join code',
+                style: TextStyle(color: Colors.white)),
+          ),
+        ],
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())

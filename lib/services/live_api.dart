@@ -34,6 +34,7 @@ class LiveApi {
     String description = '',
     DateTime? scheduledAt,
     bool goLiveNow = false,
+    String visibility = 'public',
   }) async {
     final u = await currentUser();
     final resp = await http.post(
@@ -46,6 +47,7 @@ class LiveApi {
         'instructorName': u['userName'],
         'scheduledAt': scheduledAt?.toIso8601String(),
         'goLiveNow': goLiveNow,
+        'visibility': visibility,
       }),
     );
     final data = jsonDecode(resp.body);
@@ -53,6 +55,17 @@ class LiveApi {
       return Map<String, dynamic>.from(data['liveClass']);
     }
     throw Exception(data['message'] ?? 'Could not create class');
+  }
+
+  /// Look up a class by its join code (for private classes).
+  static Future<Map<String, dynamic>?> getByCode(String code) async {
+    final resp = await http.get(
+      Uri.parse('$_base/live/by-code/${code.trim().toUpperCase()}'),
+    );
+    if (resp.statusCode == 200) {
+      return Map<String, dynamic>.from(jsonDecode(resp.body)['liveClass']);
+    }
+    return null;
   }
 
   static Future<Map<String, dynamic>> feed() async {
