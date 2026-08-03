@@ -217,4 +217,17 @@ class LiveApi {
     }
     return [];
   }
+
+  static Future<void> cancelClass(String id) async {
+    await http.delete(Uri.parse('$_base/live/$id'));
+  }
+
+  static Future<void> rateClass(String id, int stars) async {
+    final u = await currentUser();
+    await http.post(
+      Uri.parse('$_base/live/$id/rate'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'userId': u['userId'], 'stars': stars}),
+    );
+  }
 }

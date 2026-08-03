@@ -146,20 +146,43 @@ class _LiveWatchScreenState extends State<LiveWatchScreen> {
 
   void _showEnded() {
     if (!mounted) return;
+    int stars = 0;
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Class ended'),
-        content: const Text('The instructor has ended this class.'),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              Navigator.pop(context);
-            },
-            child: const Text('OK'),
+      builder: (_) => StatefulBuilder(
+        builder: (context, setLocal) => AlertDialog(
+          title: const Text('Class ended'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('How was the class? Rate it:'),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(
+                  5,
+                  (i) => IconButton(
+                    padding: EdgeInsets.zero,
+                    icon: Icon(i < stars ? Icons.star : Icons.star_border,
+                        color: Colors.amber, size: 30),
+                    onPressed: () => setLocal(() => stars = i + 1),
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
+          actions: [
+            TextButton(
+              onPressed: () async {
+                if (stars > 0) await LiveApi.rateClass(_id, stars);
+                if (!mounted) return;
+                Navigator.pop(context);
+                Navigator.pop(context);
+              },
+              child: const Text('Done'),
+            ),
+          ],
+        ),
       ),
     );
   }

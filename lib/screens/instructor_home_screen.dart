@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/live_api.dart';
 import '../services/api_service.dart';
@@ -74,18 +75,191 @@ class _InstructorHomeScreenState extends State<InstructorHomeScreen> {
               liveClass: c, autoGoLive: status == 'scheduled'),
         ),
       ).then((_) => _load());
-    } else if (status == 'ended' && (c['recordingUrl'] ?? '') != '') {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => RecordedReplayScreen(
-            title: c['title'] ?? 'Recording',
-            url: c['recordingUrl'] ?? '',
-          ),
-        ),
+    } else {
+      _showReport(c);
+    }
+  }
+
+  void _copyCode(String code) {
+    Clipboard.setData(ClipboardData(text: code));
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Code copied: $code')),
       );
     }
   }
+
+  Future<void> _cancelClass(String id) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Cancel class?'),
+        content: const Text('This removes the class permanently.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('No')),
+          ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Yes, cancel')),
+        ],
+      ),
+    );
+    if (ok == true) {
+      await LiveApi.cancelClass(id);
+      _load();
+    }
+  }
+
+  void _showReport(Map<String, dynamic> c) {
+    final questions = (c['questions'] as List?)?.length ?? 0;
+    final students = c['attendeesCount'] ?? 0;
+    int mins = 0;
+    final s = DateTime.tryParse(c['startedAt']?.toString() ?? '');
+    final e = DateTime.tryParse(c['endedAt']?.toString() ?? '');
+    if (s != null && e != null) mins = e.difference(s).inMinutes;
+    final rec = (c['recordingUrl'] ?? '').toString();
+    showModalBottomSheet(
+      context: context,
+      builder: (_) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 30),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(c['title'] ?? 'Class',
+                style: const TextStyle(
+                    fontSize: 18, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 4),
+            Text('Class report',
+                style: TextStyle(color: Colors.grey.shade600)),
+            const SizedBox(height: 14),
+            _reportRow(Icons.groups_2_outlined, 'Students reached', '$students'),
+            _reportRow(Icons.forum_outlined, 'Questions asked', '$questions'),
+            _reportRow(Icons.timer_outlined, 'Duration', '${mins}m'),
+            _reportRow(Icons.videocam_outlined, 'Join code',
+                (c['joinCode'] ?? '-').toString()),
+            _reportRow(Icons.star_outline, 'Avg rating', _avgRating(c)),
+            const SizedBox(height: 14),
+            if (rec.isNotEmpty)
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                      backgroundColor: _green, foregroundColor: Colors.white),
+                  onPressed: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => RecordedReplayScreen(
+                            title: c['title'] ?? 'Recording', url: rec),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.play_circle),
+                  label: const Text('Watch recording'),
+                ),
+              )
+            else
+              const Text('No recording for this class.',
+                  style: TextStyle(color: Colors.black54)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  List<int> _weeklyBuckets() {
+    final now = DateTime.now();
+    final buckets = List<int>.filled(6, 0); // [0]=5 weeks ago ... [5]=this week
+    for (final c in _classes) {
+      final d =
+          DateTime.tryParse((Map.from(c)['createdAt'] ?? '').toString());
+      if (d == null) continue;
+      final weeksAgo = now.difference(d).inDays ~/ 7;
+      if (weeksAgo >= 0 && weeksAgo < 6) buckets[5 - weeksAgo] += 1;
+    }
+    return buckets;
+  }
+
+  Widget _weeklyChart() {
+    final b = _weeklyBuckets();
+    final maxV = b.fold<int>(1, (m, v) => v > m ? v : m);
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 3)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Activity (last 6 weeks)',
+              style: TextStyle(fontWeight: FontWeight.w700)),
+          const SizedBox(height: 14),
+          SizedBox(
+            height: 96,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: List.generate(6, (i) {
+                final h = 74.0 * b[i] / maxV;
+                return Column(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Text('${b[i]}',
+                        style: const TextStyle(
+                            fontSize: 11, color: Colors.black54)),
+                    const SizedBox(height: 4),
+                    Container(
+                      width: 26,
+                      height: h < 4 ? 4 : h,
+                      decoration: BoxDecoration(
+                          color: _green,
+                          borderRadius: BorderRadius.circular(6)),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(i == 5 ? 'now' : '-${5 - i}w',
+                        style: const TextStyle(
+                            fontSize: 10, color: Colors.black45)),
+                  ],
+                );
+              }),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _avgRating(Map<String, dynamic> c) {
+    final r = (c['ratings'] as List?) ?? [];
+    if (r.isEmpty) return 'No ratings';
+    final sum = r.fold<int>(
+        0, (s, e) => s + ((Map.from(e)['stars'] ?? 0) as int));
+    return '${(sum / r.length).toStringAsFixed(1)} ★ (${r.length})';
+  }
+
+  Widget _reportRow(IconData i, String label, String value) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 7),
+        child: Row(
+          children: [
+            Icon(i, size: 20, color: _green),
+            const SizedBox(width: 12),
+            Expanded(child: Text(label)),
+            Text(value,
+                style: const TextStyle(fontWeight: FontWeight.w700)),
+          ],
+        ),
+      );
 
   String _fmtTime(dynamic minutes) {
     final m = (minutes is num) ? minutes.round() : 0;
@@ -175,6 +349,8 @@ class _InstructorHomeScreenState extends State<InstructorHomeScreen> {
                   ),
                   const SizedBox(height: 16),
                   _statsGrid(),
+                  const SizedBox(height: 16),
+                  _weeklyChart(),
                   const SizedBox(height: 22),
                   const Text('My Classes',
                       style: TextStyle(
@@ -202,8 +378,11 @@ class _InstructorHomeScreenState extends State<InstructorHomeScreen> {
           Icons.event_available, _green),
       _stat('Teaching time', _fmtTime(_stats['totalMinutes']),
           Icons.timer_outlined, Colors.indigo),
-      _stat('Students reached', '${_stats['totalStudents'] ?? 0}',
-          Icons.groups_2_outlined, Colors.teal),
+      _stat(
+          'Students reached',
+          '${_stats['uniqueStudents'] ?? _stats['totalStudents'] ?? 0}',
+          Icons.groups_2_outlined,
+          Colors.teal),
       _stat('Recordings', '${_stats['recordings'] ?? 0}',
           Icons.video_library_outlined, Colors.deepOrange),
     ];
@@ -278,11 +457,33 @@ class _InstructorHomeScreenState extends State<InstructorHomeScreen> {
               '${c['attendeesCount']} students',
           ].join('  •  '),
         ),
-        trailing: live
-            ? _pill('LIVE', Colors.red)
-            : (status == 'scheduled'
-                ? _pill('Go live', _green)
-                : const Icon(Icons.chevron_right)),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (live)
+              _pill('LIVE', Colors.red)
+            else if (status == 'scheduled')
+              _pill('Go live', _green)
+            else
+              const Icon(Icons.chevron_right),
+            PopupMenuButton<String>(
+              onSelected: (v) {
+                if (v == 'copy') {
+                  _copyCode(c['joinCode']?.toString() ?? '');
+                } else if (v == 'cancel') {
+                  _cancelClass(c['_id']?.toString() ?? '');
+                }
+              },
+              itemBuilder: (_) => [
+                const PopupMenuItem(
+                    value: 'copy', child: Text('Copy join code')),
+                if (status != 'ended')
+                  const PopupMenuItem(
+                      value: 'cancel', child: Text('Cancel class')),
+              ],
+            ),
+          ],
+        ),
         onTap: () => _openClass(c),
       ),
     );
