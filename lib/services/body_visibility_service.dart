@@ -4,51 +4,59 @@ class BodyVisibilityResult {
   final bool isVisible;
   final String message;
 
-  BodyVisibilityResult({required this.isVisible, required this.message});
+  const BodyVisibilityResult({required this.isVisible, required this.message});
 }
 
 class BodyVisibilityService {
-  static BodyVisibilityResult validate(
-    Pose pose,
-    double imageWidth,
-    double imageHeight,
-  ) {
+  /// Minimum ML Kit landmark likelihood to consider a point detected.
+  static const double _minLikelihood = 0.30;
+
+  /// Core torso anchors (must be visible to track pose)
+  static const _coreAnchors = [
+    PoseLandmarkType.leftShoulder,
+    PoseLandmarkType.rightShoulder,
+    PoseLandmarkType.leftHip,
+    PoseLandmarkType.rightHip,
+  ];
+
+  /// Secondary limbs (nudge user if low confidence, but keep tracking enabled)
+  static const _limbPoints = [
+    (PoseLandmarkType.leftKnee, 'left knee'),
+    (PoseLandmarkType.rightKnee, 'right knee'),
+    (PoseLandmarkType.leftAnkle, 'left ankle'),
+    (PoseLandmarkType.rightAnkle, 'right ankle'),
+    (PoseLandmarkType.leftWrist, 'left wrist'),
+    (PoseLandmarkType.rightWrist, 'right wrist'),
+  ];
+
+  static BodyVisibilityResult validate(Pose pose) {
     final landmarks = pose.landmarks;
 
-    final requiredPoints = [
-      PoseLandmarkType.leftShoulder,
-      PoseLandmarkType.rightShoulder,
-      PoseLandmarkType.leftHip,
-      PoseLandmarkType.rightHip,
-      PoseLandmarkType.leftKnee,
-      PoseLandmarkType.rightKnee,
-      PoseLandmarkType.leftAnkle,
-      PoseLandmarkType.rightAnkle,
-      PoseLandmarkType.leftWrist,
-      PoseLandmarkType.rightWrist,
-    ];
-
-    for (final type in requiredPoints) {
+    // 1. Check core torso anchors
+    for (final type in _coreAnchors) {
       final point = landmarks[type];
-
-      if (point == null) {
-        return BodyVisibilityResult(
+      if (point == null || point.likelihood < _minLikelihood) {
+        return const BodyVisibilityResult(
           isVisible: false,
-          message: "Full body not visible",
-        );
-      }
-
-      if (point.x < 0 ||
-          point.y < 0 ||
-          point.x > imageWidth ||
-          point.y > imageHeight) {
-        return BodyVisibilityResult(
-          isVisible: false,
-          message: "Move fully inside frame",
+          message: 'Step back into camera view',
         );
       }
     }
 
-    return BodyVisibilityResult(isVisible: true, message: "Full body detected");
+    // 2. Check limbs for specific nudges
+    for (final (type, name) in _limbPoints) {
+      final point = landmarks[type];
+      if (point == null || point.likelihood < _minLikelihood) {
+        return BodyVisibilityResult(
+          isVisible: true,
+          message: 'Make $name visible',
+        );
+      }
+    }
+
+    return const BodyVisibilityResult(
+      isVisible: true,
+      message: 'Full body detected ✓',
+    );
   }
 }
