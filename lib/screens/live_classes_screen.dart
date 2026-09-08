@@ -4,6 +4,7 @@ import '../services/live_api.dart';
 import 'live_broadcast_screen.dart';
 import 'live_watch_screen.dart';
 import 'recorded_replay_screen.dart';
+import 'schedule_calendar_screen.dart';
 
 /// The Live Training hub: Live now, Upcoming and Recorded classes.
 class LiveClassesScreen extends StatefulWidget {
@@ -51,6 +52,16 @@ class _LiveClassesScreenState extends State<LiveClassesScreen> {
   }
 
   bool _isMine(Map c) => (c['instructorId'] ?? '') == _myId;
+
+  Future<void> _openSchedule() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const ScheduleCalendarScreen(mode: ScheduleMode.browse),
+      ),
+    );
+    _load();
+  }
 
   Future<void> _joinWithCode() async {
     final ctrl = TextEditingController();
@@ -141,6 +152,11 @@ class _LiveClassesScreenState extends State<LiveClassesScreen> {
         backgroundColor: const Color(0xFF6C63FF),
         foregroundColor: Colors.white,
         actions: [
+          IconButton(
+            onPressed: _openSchedule,
+            tooltip: 'Schedule',
+            icon: const Icon(Icons.calendar_month_rounded, color: Colors.white),
+          ),
           TextButton.icon(
             onPressed: _joinWithCode,
             icon: const Icon(Icons.vpn_key_rounded,

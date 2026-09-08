@@ -8,8 +8,8 @@ class ApiService {
   // static const String rootUrl = 'http://localhost:5000/';
 
   // Local WiFi (phone + PC on same network, no ADB path needed)
-  static const String baseUrl = 'http://192.168.1.110:5000/api';
-  static const String rootUrl = 'http://192.168.1.110:5000/';
+  static const String baseUrl = 'http://192.168.1.101:5000/api';
+  static const String rootUrl = 'http://192.168.1.101:5000/';
 
   // Production: Render (works anywhere, no PC/USB needed)
   // static const String baseUrl = 'https://yoga-mitra-backend.onrender.com/api';

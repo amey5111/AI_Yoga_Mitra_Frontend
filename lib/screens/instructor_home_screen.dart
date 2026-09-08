@@ -5,8 +5,10 @@ import '../services/live_api.dart';
 import '../services/api_service.dart';
 import 'create_live_class_screen.dart';
 import 'instructor_profile_screen.dart';
+import 'lesson_plan_screen.dart';
 import 'live_broadcast_screen.dart';
 import 'recorded_replay_screen.dart';
+import 'schedule_calendar_screen.dart';
 import 'welcome_screen.dart';
 
 /// The instructor experience. Completely separate from the normal user app:
@@ -52,6 +54,30 @@ class _InstructorHomeScreenState extends State<InstructorHomeScreen> {
     await Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const CreateLiveClassScreen()),
+    );
+    _load();
+  }
+
+  Future<void> _openLessonPlan(Map<String, dynamic> c) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => LessonPlanScreen(
+          classId: c['_id']?.toString() ?? '',
+          classTitle: c['title']?.toString() ?? '',
+        ),
+      ),
+    );
+    _load();
+  }
+
+  Future<void> _openSchedule() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            const ScheduleCalendarScreen(mode: ScheduleMode.instructor),
+      ),
     );
     _load();
   }
@@ -278,6 +304,11 @@ class _InstructorHomeScreenState extends State<InstructorHomeScreen> {
         title: const Text('Instructor Dashboard'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.calendar_month_rounded),
+            tooltip: 'My schedule',
+            onPressed: _openSchedule,
+          ),
+          IconButton(
             icon: const Icon(Icons.person_outline_rounded),
             tooltip: 'Edit profile',
             onPressed: () async {
@@ -365,9 +396,21 @@ class _InstructorHomeScreenState extends State<InstructorHomeScreen> {
                   const SizedBox(height: 16),
                   _weeklyChart(),
                   const SizedBox(height: 22),
-                  const Text('My Classes',
-                      style: TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.w700)),
+                  Row(
+                    children: [
+                      const Expanded(
+                        child: Text('My Classes',
+                            style: TextStyle(
+                                fontSize: 18, fontWeight: FontWeight.w700)),
+                      ),
+                      TextButton.icon(
+                        onPressed: _openSchedule,
+                        icon: const Icon(Icons.calendar_month_rounded, size: 18),
+                        label: const Text('Calendar'),
+                        style: TextButton.styleFrom(foregroundColor: _green),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 8),
                   if (_classes.isEmpty)
                     const Padding(
@@ -483,11 +526,15 @@ class _InstructorHomeScreenState extends State<InstructorHomeScreen> {
               onSelected: (v) {
                 if (v == 'copy') {
                   _copyCode(c['joinCode']?.toString() ?? '');
+                } else if (v == 'plan') {
+                  _openLessonPlan(c);
                 } else if (v == 'cancel') {
                   _cancelClass(c['_id']?.toString() ?? '');
                 }
               },
               itemBuilder: (_) => [
+                const PopupMenuItem(
+                    value: 'plan', child: Text('Lesson plan')),
                 const PopupMenuItem(
                     value: 'copy', child: Text('Copy join code')),
                 if (status != 'ended')
