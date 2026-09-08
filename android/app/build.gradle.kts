@@ -47,6 +47,20 @@ android {
     }
 
     buildTypes {
+        getByName("debug") {
+            // A debug APK with every architecture in it is ~430 MB, and Android
+            // re-verifies all of it on each install. Physical test devices are
+            // arm64, so ship only that while developing — it roughly halves the
+            // install and takes minutes off the edit/run loop.
+            //
+            // Testing on a Windows/Intel emulator instead? Add "x86_64" here.
+            // Release builds and the Play Store bundle are untouched.
+            ndk {
+                abiFilters.clear()
+                abiFilters.add("arm64-v8a")
+            }
+        }
+
         getByName("release") {
             // Use the real upload keystore when configured (key.properties present);
             // otherwise fall back to debug signing so a shareable release APK still builds.
