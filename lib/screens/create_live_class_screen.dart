@@ -25,6 +25,7 @@ class _CreateLiveClassScreenState extends State<CreateLiveClassScreen> {
   bool _private = false;
   DateTime? _scheduledAt;
   int _durationMinutes = 60;
+  String _stageMode = 'webinar';
   bool _saving = false;
 
   static const _durations = [30, 45, 60, 75, 90, 120];
@@ -97,6 +98,7 @@ class _CreateLiveClassScreenState extends State<CreateLiveClassScreen> {
         scheduledAt: _goLiveNow ? null : _scheduledAt,
         durationMinutes: _durationMinutes,
         visibility: _private ? 'private' : 'public',
+        stageMode: _stageMode,
       );
       if (!mounted) return;
       if (_goLiveNow) {
@@ -251,6 +253,42 @@ class _CreateLiveClassScreenState extends State<CreateLiveClassScreen> {
           const SizedBox(height: 14),
 
           _card(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.groups_2_outlined,
+                        size: 18, color: AppColors.accent),
+                    const SizedBox(width: 8),
+                    Text('How will you run it?',
+                        style: AppTextStyles.heading3()),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                _modeOption(
+                  value: 'webinar',
+                  icon: Icons.record_voice_over_outlined,
+                  title: 'You teach, they watch',
+                  subtitle:
+                      'Students watch your video and raise a hand to come on '
+                      'camera one at a time.',
+                ),
+                const SizedBox(height: 8),
+                _modeOption(
+                  value: 'group',
+                  icon: Icons.grid_view_rounded,
+                  title: 'Everyone on camera',
+                  subtitle:
+                      'You see the whole class practising in a grid, and they '
+                      'see you. Best for small groups.',
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          _card(
             child: SwitchListTile(
               value: _private,
               activeThumbColor: AppColors.accent,
@@ -275,6 +313,56 @@ class _CreateLiveClassScreenState extends State<CreateLiveClassScreen> {
             onPressed: _saving ? null : _submit,
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _modeOption({
+    required String value,
+    required IconData icon,
+    required String title,
+    required String subtitle,
+  }) {
+    final selected = _stageMode == value;
+    return InkWell(
+      onTap: () => setState(() => _stageMode = value),
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.chipBg : Colors.transparent,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: selected ? AppColors.accent : AppColors.divider,
+            width: selected ? 1.6 : 1.2,
+          ),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon,
+                size: 20,
+                color: selected ? AppColors.accent : AppColors.textSecondary),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: AppTextStyles.bodyMedium()),
+                  const SizedBox(height: 3),
+                  Text(subtitle, style: AppTextStyles.caption()),
+                ],
+              ),
+            ),
+            Icon(
+              selected
+                  ? Icons.radio_button_checked_rounded
+                  : Icons.radio_button_unchecked_rounded,
+              size: 20,
+              color: selected ? AppColors.accent : AppColors.divider,
+            ),
+          ],
+        ),
       ),
     );
   }

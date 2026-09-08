@@ -8,6 +8,7 @@ import '../services/live_api.dart';
 import '../theme/app_theme.dart';
 import '../utils/language_helper.dart';
 import 'create_live_class_screen.dart';
+import 'lesson_plan_screen.dart';
 import 'live_broadcast_screen.dart';
 import 'live_watch_screen.dart';
 import 'recorded_replay_screen.dart';
@@ -295,6 +296,15 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
     await _refresh();
     if (!mounted) return;
     _toast(_t('Class cancelled.', 'वर्ग रद्द केला.', 'क्लास रद्द कर दी गई।'));
+  }
+
+  void _openLessonPlan(ClassEvent e) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => LessonPlanScreen(classId: e.id, classTitle: e.title),
+      ),
+    );
   }
 
   void _copyCode(String code) {
@@ -842,7 +852,20 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
             if (e.joinCode.isNotEmpty)
               _detailRow(Icons.vpn_key_rounded,
                   _t('Join code', 'जॉइन कोड', 'जॉइन कोड'), e.joinCode),
-            const SizedBox(height: 18),
+            const SizedBox(height: 14),
+            // The lesson plan is worth reaching for whoever is looking: the
+            // instructor to build it, a student to see what is coming.
+            AppSecondaryButton(
+              label: e.isMine
+                  ? _t('Lesson plan', 'धडा योजना', 'लेसन प्लान')
+                  : _t('What we will do', 'आपण काय करणार', 'हम क्या करेंगे'),
+              icon: Icons.menu_book_rounded,
+              onPressed: () {
+                Navigator.pop(sheetContext);
+                _openLessonPlan(e);
+              },
+            ),
+            const SizedBox(height: 14),
             if (e.isMine && e.isUpcoming) ...[
               AppPrimaryButton(
                 label: _t('Go live now', 'आता लाइव्ह व्हा', 'अभी लाइव जाएँ'),

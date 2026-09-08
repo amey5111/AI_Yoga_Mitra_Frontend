@@ -1,12 +1,17 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import '../services/live_api.dart';
 import '../services/live_engine.dart';
+import '../Widgets/video_grid.dart';
+import 'lesson_plan_screen.dart';
 
-/// Instructor side: broadcast video, manage Q&A, approve raised hands,
-/// start/stop cloud recording and end the class.
+/// Instructor side: broadcast video, watch the class practise, manage Q&A,
+/// approve raised hands, start/stop cloud recording and end the class.
+///
+/// The stage shows every participant who is publishing video. In a group class
+/// that is everybody from the moment they join; in a webinar it is the
+/// instructor plus whoever they have brought on camera.
 class LiveBroadcastScreen extends StatefulWidget {
   final Map<String, dynamic> liveClass;
   final bool autoGoLive;
@@ -24,12 +29,23 @@ class _LiveBroadcastScreenState extends State<LiveBroadcastScreen> {
   final LiveEngine _eng = LiveEngine();
   String _id = '';
   String _appId = '';
+  int _myUid = 0;
   bool _starting = true;
   String? _error;
   bool _recording = false;
+  bool _gridView = true;
+
+  /// Whoever the instructor has tapped to enlarge. 0 means "no one pinned".
+  int _spotlightUid = 0;
+
+  String _stageMode = 'webinar';
   List _questions = [];
   List _hands = [];
   List _participants = [];
+
+  /// Agora uid -> the person's name, so tiles are labelled properly.
+  Map<int, String> _namesByUid = {};
+
   Timer? _poll;
 
   static const _green = Color(0xFF6C63FF); // app accent (purple)
@@ -38,16 +54,22 @@ class _LiveBroadcastScreenState extends State<LiveBroadcastScreen> {
   void initState() {
     super.initState();
     _id = widget.liveClass['_id']?.toString() ?? '';
+    _stageMode = (widget.liveClass['stageMode'] ?? 'webinar').toString();
     _start();
   }
 
   Future<void> _start() async {
     try {
       await _eng.ensurePermissions();
-      if (widget.autoGoLive || widget.liveClass['status'] == 'scheduled') {
-        await LiveApi.goLive(_id);
-      }
+      // The uid has to be known before going live: it is published with
+      // go-live so viewers can tell which stream is the instructor's.
       final uid = await LiveApi.myUid();
+      _myUid = uid;
+
+      if (widget.autoGoLive || widget.liveClass['status'] == 'scheduled') {
+        await LiveApi.goLive(_id, agoraUid: uid);
+      }
+
       final tok = await LiveApi.getToken(_id, uid: uid, role: 'host');
       _appId = (tok['appId'] ?? '').toString();
       if (_appId.isEmpty) {
@@ -57,9 +79,14 @@ class _LiveBroadcastScreenState extends State<LiveBroadcastScreen> {
         });
         return;
       }
+      _stageMode = (tok['stageMode'] ?? _stageMode).toString();
+
       await _eng.init(_appId);
       _eng.onChanged = () {
         if (mounted) setState(() {});
+      };
+      _eng.onFatal = (reason) {
+        if (mounted) setState(() => _error = reason);
       };
       await _eng.join(
         token: (tok['token'] ?? '').toString(),
@@ -67,9 +94,12 @@ class _LiveBroadcastScreenState extends State<LiveBroadcastScreen> {
         uid: uid,
         asHost: true,
       );
+      if (!mounted) return;
       setState(() => _starting = false);
       _poll = Timer.periodic(const Duration(seconds: 3), (_) => _refresh());
+      _refresh();
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = 'Could not start the broadcast.';
         _starting = false;
@@ -81,13 +111,53 @@ class _LiveBroadcastScreenState extends State<LiveBroadcastScreen> {
     try {
       final s = await LiveApi.getState(_id);
       if (!mounted) return;
+      final people = (s['participants'] as List?) ?? [];
       setState(() {
         _questions = s['questions'] ?? [];
         _hands = s['raisedHands'] ?? [];
-        _participants = s['participants'] ?? [];
+        _participants = people;
         _recording = s['isRecording'] == true;
+        _stageMode = (s['stageMode'] ?? _stageMode).toString();
+        _namesByUid = _buildNameMap(people);
       });
     } catch (_) {}
+  }
+
+  Map<int, String> _buildNameMap(List people) {
+    final map = <int, String>{};
+    for (final p in people) {
+      final m = Map<String, dynamic>.from(p as Map);
+      final uid = (m['agoraUid'] as num?)?.toInt() ?? 0;
+      if (uid > 0) map[uid] = (m['userName'] ?? 'Guest').toString();
+    }
+    return map;
+  }
+
+  String _nameFor(int uid) => _namesByUid[uid] ?? 'Guest';
+
+  /// Everyone currently on camera: the instructor first, then the room.
+  List<VideoTileData> get _tiles {
+    final tiles = <VideoTileData>[
+      VideoTileData(
+        uid: _myUid,
+        name: 'You',
+        isLocal: true,
+        isInstructor: true,
+        cameraOff: !_eng.camOn,
+        muted: !_eng.micOn,
+        speaking: _eng.localIsSpeaking,
+      ),
+      ..._eng.remoteUids.map(
+        (uid) => VideoTileData(
+          uid: uid,
+          name: _nameFor(uid),
+          cameraOff: _eng.isVideoOff(uid),
+          muted: _eng.isMuted(uid),
+          speaking: _eng.activeSpeakerUid == uid,
+        ),
+      ),
+    ];
+    return tiles;
   }
 
   Future<void> _toggleRecord() async {
@@ -120,6 +190,18 @@ class _LiveBroadcastScreenState extends State<LiveBroadcastScreen> {
     }
   }
 
+  void _openLessonPlan() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => LessonPlanScreen(
+          classId: _id,
+          classTitle: (widget.liveClass['title'] ?? '').toString(),
+        ),
+      ),
+    );
+  }
+
   void _openPanel() {
     showModalBottomSheet(
       context: context,
@@ -141,6 +223,7 @@ class _LiveBroadcastScreenState extends State<LiveBroadcastScreen> {
               ),
             ..._participants.map((p) {
               final m = Map<String, dynamic>.from(p);
+              final onStage = m['onStage'] == true;
               return ListTile(
                 dense: true,
                 leading: CircleAvatar(
@@ -155,14 +238,23 @@ class _LiveBroadcastScreenState extends State<LiveBroadcastScreen> {
                   ),
                 ),
                 title: Text(m['userName'] ?? 'Guest'),
-                trailing: TextButton(
-                  onPressed: () async {
-                    await LiveApi.approveHand(_id, m['userId'].toString());
-                    await _refresh();
-                    if (mounted) Navigator.pop(context);
-                  },
-                  child: const Text('On stage'),
-                ),
+                subtitle: onStage ? const Text('On camera') : null,
+                trailing: _stageMode == 'group'
+                    ? null
+                    : TextButton(
+                        onPressed: () async {
+                          if (onStage) {
+                            await LiveApi.lowerHand(
+                                _id, m['userId'].toString());
+                          } else {
+                            await LiveApi.approveHand(
+                                _id, m['userId'].toString());
+                          }
+                          await _refresh();
+                          if (mounted) Navigator.pop(context);
+                        },
+                        child: Text(onStage ? 'Take off' : 'On stage'),
+                      ),
               );
             }),
             const Divider(height: 24),
@@ -273,154 +365,227 @@ class _LiveBroadcastScreenState extends State<LiveBroadcastScreen> {
   Widget _live() {
     return Stack(
       children: [
-        // The instructor camera fills the screen (or a "camera off" tile).
-        Positioned.fill(
-          child: (_eng.engine == null || !_eng.camOn)
-              ? Container(
-                  color: Colors.black,
-                  child: const Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.videocam_off,
-                            color: Colors.white38, size: 48),
-                        SizedBox(height: 8),
-                        Text('Camera off',
-                            style: TextStyle(color: Colors.white38)),
-                      ],
-                    ),
-                  ),
-                )
-              : AgoraVideoView(
-                  controller: VideoViewController(
-                    rtcEngine: _eng.engine!,
-                    canvas: const VideoCanvas(uid: 0),
-                  ),
-                ),
+        Positioned.fill(child: _stage()),
+        Positioned(top: 8, left: 12, right: 12, child: _header()),
+        Positioned(left: 0, right: 0, bottom: 12, child: _controls()),
+      ],
+    );
+  }
+
+  /* ── stage ──────────────────────────────────────────────────────────────── */
+
+  Widget _stage() {
+    final engine = _eng.engine;
+    if (engine == null) return const SizedBox.shrink();
+
+    final tiles = _tiles;
+
+    // In a webinar with nobody brought up yet, the instructor's own camera
+    // fills the screen — a one-tile grid would just be the same view with a
+    // border around it.
+    final soloWebinar = _eng.remoteUids.isEmpty;
+    if (soloWebinar) {
+      return Stack(
+        children: [
+          Positioned.fill(
+            child: VideoTile(
+              engine: engine,
+              channelId: _eng.channel,
+              tile: tiles.first,
+              large: true,
+            ),
+          ),
+          if (_stageMode != 'group')
+            Positioned(
+              left: 16,
+              right: 16,
+              bottom: 112,
+              child: _hint(
+                'Students are watching. Bring someone on camera from the '
+                'People panel to see them here.',
+              ),
+            ),
+        ],
+      );
+    }
+
+    if (_gridView && _spotlightUid == 0) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 52, bottom: 96),
+        child: VideoGrid(
+          engine: engine,
+          channelId: _eng.channel,
+          tiles: tiles,
+          onTapTile: (t) => setState(() => _spotlightUid = t.uid),
         ),
-        // Approved speakers who came on video.
-        Positioned(
-          top: 10,
-          right: 10,
-          child: Column(
-            children: _eng.remoteUids
-                .take(3)
-                .map((u) => Container(
-                      width: 90,
-                      height: 120,
-                      margin: const EdgeInsets.only(bottom: 8),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.white24),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child: AgoraVideoView(
-                        controller: VideoViewController.remote(
-                          rtcEngine: _eng.engine!,
-                          canvas: VideoCanvas(uid: u),
-                          connection: RtcConnection(channelId: _eng.channel),
-                        ),
-                      ),
-                    ))
-                .toList(),
+      );
+    }
+
+    // Spotlight: one large tile with the rest along the bottom.
+    final spotlight = tiles.firstWhere(
+      (t) => t.uid == _spotlightUid,
+      orElse: () => tiles.first,
+    );
+    final others = tiles.where((t) => t.uid != spotlight.uid).toList();
+
+    return Column(
+      children: [
+        Expanded(
+          child: VideoTile(
+            engine: engine,
+            channelId: _eng.channel,
+            tile: spotlight,
+            large: true,
+            onTap: () => setState(() {
+              _spotlightUid = 0;
+              _gridView = true;
+            }),
           ),
         ),
-        // Header.
-        Positioned(
-          top: 8,
-          left: 12,
-          child: Row(
-            children: [
-              _tag('LIVE', Colors.red),
-              if (_recording) ...[
-                const SizedBox(width: 6),
-                _tag('REC', Colors.black87),
-              ],
-              const SizedBox(width: 8),
-              SizedBox(
-                width: 110,
-                child: Text(
-                  widget.liveClass['title'] ?? 'Live class',
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.w600),
+        if (others.isNotEmpty)
+          SizedBox(
+            height: 104,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+              itemCount: others.length,
+              separatorBuilder: (context, index) => const SizedBox(width: 8),
+              itemBuilder: (context, i) => SizedBox(
+                width: 78,
+                child: VideoTile(
+                  engine: engine,
+                  channelId: _eng.channel,
+                  tile: others[i],
+                  onTap: () => setState(() => _spotlightUid = others[i].uid),
                 ),
               ),
-              if ((widget.liveClass['joinCode'] ?? '')
-                  .toString()
-                  .isNotEmpty) ...[
-                const SizedBox(width: 6),
-                GestureDetector(
-                  onTap: () {
-                    Clipboard.setData(ClipboardData(
-                        text: widget.liveClass['joinCode'].toString()));
-                    _snack('Join code copied');
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                        color: _green,
-                        borderRadius: BorderRadius.circular(6)),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(widget.liveClass['joinCode'].toString(),
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700)),
-                        const SizedBox(width: 4),
-                        const Icon(Icons.copy,
-                            color: Colors.white, size: 12),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ],
+            ),
+          ),
+        const SizedBox(height: 88),
+      ],
+    );
+  }
+
+  Widget _hint(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.info_outline_rounded,
+              color: Colors.white70, size: 16),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(text,
+                style: const TextStyle(color: Colors.white70, fontSize: 12)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /* ── chrome ─────────────────────────────────────────────────────────────── */
+
+  Widget _header() {
+    final joinCode = (widget.liveClass['joinCode'] ?? '').toString();
+    return Row(
+      children: [
+        _tag('LIVE', Colors.red),
+        if (_recording) ...[
+          const SizedBox(width: 6),
+          _tag('REC', Colors.black87),
+        ],
+        if (_stageMode == 'group') ...[
+          const SizedBox(width: 6),
+          _tag('GROUP', _green),
+        ],
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            widget.liveClass['title'] ?? 'Live class',
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+                color: Colors.white, fontWeight: FontWeight.w600),
           ),
         ),
-        // Controls.
-        Positioned(
-          left: 0,
-          right: 0,
-          bottom: 12,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _ctrl(_eng.micOn ? Icons.mic : Icons.mic_off, 'Mic',
-                  _eng.toggleMic),
-              _ctrl(_eng.camOn ? Icons.videocam : Icons.videocam_off, 'Cam',
-                  _eng.toggleCam),
-              _ctrl(Icons.cameraswitch, 'Flip', _eng.switchCamera),
-              _ctrl(
-                _recording ? Icons.stop_circle : Icons.fiber_manual_record,
-                _recording ? 'Stop' : 'Record',
-                _toggleRecord,
-                color: Colors.red,
-              ),
-              Stack(
+        if (joinCode.isNotEmpty)
+          GestureDetector(
+            onTap: () {
+              Clipboard.setData(ClipboardData(text: joinCode));
+              _snack('Join code copied');
+            },
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                  color: _green, borderRadius: BorderRadius.circular(6)),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  _ctrl(Icons.forum, 'Q and A', _openPanel),
-                  if (_hands.isNotEmpty)
-                    Positioned(
-                      right: 6,
-                      top: 0,
-                      child: CircleAvatar(
-                        radius: 8,
-                        backgroundColor: Colors.red,
-                        child: Text('${_hands.length}',
-                            style: const TextStyle(
-                                color: Colors.white, fontSize: 10)),
-                      ),
-                    ),
+                  Text(joinCode,
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700)),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.copy, color: Colors.white, size: 12),
                 ],
               ),
-              _ctrl(Icons.call_end, 'End', _end, color: Colors.red),
-            ],
+            ),
           ),
+        if (_eng.remoteUids.isNotEmpty)
+          IconButton(
+            tooltip: _gridView ? 'Spotlight view' : 'Grid view',
+            icon: Icon(
+              _gridView ? Icons.person_rounded : Icons.grid_view_rounded,
+              color: Colors.white,
+              size: 20,
+            ),
+            onPressed: () => setState(() {
+              _gridView = !_gridView;
+              _spotlightUid = 0;
+            }),
+          ),
+      ],
+    );
+  }
+
+  Widget _controls() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: [
+        _ctrl(_eng.micOn ? Icons.mic : Icons.mic_off, 'Mic', _eng.toggleMic),
+        _ctrl(_eng.camOn ? Icons.videocam : Icons.videocam_off, 'Cam',
+            _eng.toggleCam),
+        _ctrl(Icons.cameraswitch, 'Flip', _eng.switchCamera),
+        _ctrl(Icons.menu_book_rounded, 'Plan', _openLessonPlan),
+        _ctrl(
+          _recording ? Icons.stop_circle : Icons.fiber_manual_record,
+          _recording ? 'Stop' : 'Record',
+          _toggleRecord,
+          color: Colors.red,
         ),
+        Stack(
+          children: [
+            _ctrl(Icons.forum, 'People', _openPanel),
+            if (_hands.isNotEmpty)
+              Positioned(
+                right: 6,
+                top: 0,
+                child: CircleAvatar(
+                  radius: 8,
+                  backgroundColor: Colors.red,
+                  child: Text('${_hands.length}',
+                      style: const TextStyle(
+                          color: Colors.white, fontSize: 10)),
+                ),
+              ),
+          ],
+        ),
+        _ctrl(Icons.call_end, 'End', _end, color: Colors.red),
       ],
     );
   }
@@ -444,13 +609,13 @@ class _LiveBroadcastScreenState extends State<LiveBroadcastScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           CircleAvatar(
-            radius: 24,
+            radius: 22,
             backgroundColor: Colors.white12,
-            child: Icon(icon, color: color),
+            child: Icon(icon, color: color, size: 20),
           ),
           const SizedBox(height: 3),
           Text(label,
-              style: const TextStyle(color: Colors.white70, fontSize: 11)),
+              style: const TextStyle(color: Colors.white70, fontSize: 10)),
         ],
       ),
     );
