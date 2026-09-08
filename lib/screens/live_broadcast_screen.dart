@@ -605,18 +605,28 @@ class _LiveBroadcastScreenState extends State<LiveBroadcastScreen> {
       {Color color = Colors.white}) {
     return GestureDetector(
       onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          CircleAvatar(
-            radius: 22,
-            backgroundColor: Colors.white12,
-            child: Icon(icon, color: color, size: 20),
-          ),
-          const SizedBox(height: 3),
-          Text(label,
-              style: const TextStyle(color: Colors.white70, fontSize: 10)),
-        ],
+      // Fixed width so seven controls cannot overflow the row on a narrow
+      // phone — the label ellipsizes instead of blowing out the layout.
+      child: SizedBox(
+        width: 48,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircleAvatar(
+              radius: 21,
+              backgroundColor: Colors.white12,
+              child: Icon(icon, color: color, size: 19),
+            ),
+            const SizedBox(height: 3),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white70, fontSize: 10),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -643,7 +643,9 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
         borderRadius: BorderRadius.circular(18),
         child: InkWell(
           onTap: () => _openEvent(e),
-          onLongPress: e.isMine && e.isUpcoming ? () => _showDetails(e) : null,
+          // Details — and with them the lesson plan — are worth reaching for
+          // any class, not just one of mine that has yet to start.
+          onLongPress: () => _showDetails(e),
           borderRadius: BorderRadius.circular(18),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(14, 14, 12, 14),
@@ -716,19 +718,12 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
                     ],
                   ),
                 ),
-                if (e.isMine && e.isUpcoming)
-                  IconButton(
-                    tooltip: _t('Options', 'पर्याय', 'विकल्प'),
-                    icon: const Icon(Icons.more_vert_rounded,
-                        color: AppColors.textSecondary),
-                    onPressed: () => _showDetails(e),
-                  )
-                else
-                  const Padding(
-                    padding: EdgeInsets.only(top: 4),
-                    child: Icon(Icons.chevron_right_rounded,
-                        color: AppColors.textSecondary),
-                  ),
+                IconButton(
+                  tooltip: _t('Details', 'तपशील', 'विवरण'),
+                  icon: const Icon(Icons.more_vert_rounded,
+                      color: AppColors.textSecondary),
+                  onPressed: () => _showDetails(e),
+                ),
               ],
             ),
           ),
