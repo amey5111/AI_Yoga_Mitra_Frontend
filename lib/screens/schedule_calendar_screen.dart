@@ -73,6 +73,9 @@ class _ScheduleCalendarScreenState extends State<ScheduleCalendarScreen> {
   }
 
   Future<void> _loadMonth({bool force = false}) async {
+    // Callers reach here after awaits (prefs, cancel, reschedule), so the
+    // screen may already be gone by now.
+    if (!mounted) return;
     final key = _monthKey;
     if (!force && _cache.containsKey(key)) {
       setState(() {
