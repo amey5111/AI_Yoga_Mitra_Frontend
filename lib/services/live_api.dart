@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../models/class_event.dart';
 import 'api_service.dart';
 
 /// REST client for the in-app Live Training feature (Agora based).
@@ -33,6 +34,7 @@ class LiveApi {
     required String title,
     String description = '',
     DateTime? scheduledAt,
+    int durationMinutes = 60,
     bool goLiveNow = false,
     String visibility = 'public',
   }) async {
@@ -45,7 +47,9 @@ class LiveApi {
         'description': description,
         'instructorId': u['userId'],
         'instructorName': u['userName'],
-        'scheduledAt': scheduledAt?.toIso8601String(),
+        // The server stores instants in UTC.
+        'scheduledAt': scheduledAt?.toUtc().toIso8601String(),
+        'durationMinutes': durationMinutes,
         'goLiveNow': goLiveNow,
         'visibility': visibility,
       }),
@@ -74,6 +78,76 @@ class LiveApi {
       return Map<String, dynamic>.from(jsonDecode(resp.body));
     }
     throw Exception('Could not load classes');
+  }
+
+  // ---- schedule calendar ----
+
+  /// Classes inside one month, already bucketed into local days by the server.
+  ///
+  /// Pass [instructorId] for an instructor's own schedule (their private
+  /// classes are included); leave it null to browse the public schedule.
+  static Future<CalendarWindow> calendarMonth(
+    DateTime month, {
+    String? instructorId,
+    String? viewerId,
+    List<String> statuses = const [],
+  }) async {
+    final params = <String, String>{
+      'month': monthKeyOf(month),
+      // Day boundaries are drawn in the viewer's timezone, not UTC.
+      'tzOffset': '${DateTime.now().timeZoneOffset.inMinutes}',
+    };
+    if (instructorId != null && instructorId.isNotEmpty) {
+      params['instructorId'] = instructorId;
+    }
+    if (viewerId != null && viewerId.isNotEmpty) {
+      params['viewerId'] = viewerId;
+    }
+    if (statuses.isNotEmpty) params['status'] = statuses.join(',');
+
+    final resp = await http.get(
+      Uri.parse('$_base/live/calendar').replace(queryParameters: params),
+    );
+    if (resp.statusCode == 200) {
+      return CalendarWindow.fromJson(
+        Map<String, dynamic>.from(jsonDecode(resp.body)),
+      );
+    }
+    throw Exception(_messageOf(resp.body, 'Could not load the schedule'));
+  }
+
+  /// Move a scheduled class to a new slot, change its length, or both.
+  static Future<void> reschedule(
+    String id, {
+    DateTime? scheduledAt,
+    int? durationMinutes,
+  }) async {
+    final u = await currentUser();
+    final body = <String, dynamic>{'instructorId': u['userId']};
+    if (scheduledAt != null) {
+      body['scheduledAt'] = scheduledAt.toUtc().toIso8601String();
+    }
+    if (durationMinutes != null) body['durationMinutes'] = durationMinutes;
+
+    final resp = await http.patch(
+      Uri.parse('$_base/live/$id/schedule'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(body),
+    );
+    if (resp.statusCode != 200) {
+      throw Exception(_messageOf(resp.body, 'Could not reschedule the class'));
+    }
+  }
+
+  /// Pull the server's error message out of a response, falling back to [or].
+  static String _messageOf(String body, String or) {
+    try {
+      final decoded = jsonDecode(body);
+      if (decoded is Map && decoded['message'] != null) {
+        return '${decoded['message']}';
+      }
+    } catch (_) {}
+    return or;
   }
 
   static Future<Map<String, dynamic>> getState(String id) async {

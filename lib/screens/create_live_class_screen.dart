@@ -1,10 +1,17 @@
 import 'package:flutter/material.dart';
 import '../services/live_api.dart';
+import '../theme/app_theme.dart';
 import 'live_broadcast_screen.dart';
 
 /// Instructor creates a class: go live now, or schedule for later.
+///
+/// Opened from the schedule calendar with [initialDate] set, it starts in
+/// "schedule" mode on the day the instructor tapped, so picking a slot on the
+/// calendar and filling in the details is one continuous flow.
 class CreateLiveClassScreen extends StatefulWidget {
-  const CreateLiveClassScreen({super.key});
+  final DateTime? initialDate;
+
+  const CreateLiveClassScreen({super.key, this.initialDate});
 
   @override
   State<CreateLiveClassScreen> createState() => _CreateLiveClassScreenState();
@@ -13,12 +20,33 @@ class CreateLiveClassScreen extends StatefulWidget {
 class _CreateLiveClassScreenState extends State<CreateLiveClassScreen> {
   final _title = TextEditingController();
   final _desc = TextEditingController();
-  bool _goLiveNow = true;
+
+  late bool _goLiveNow;
   bool _private = false;
   DateTime? _scheduledAt;
+  int _durationMinutes = 60;
   bool _saving = false;
 
-  static const _green = Color(0xFF6C63FF); // app accent (purple)
+  static const _durations = [30, 45, 60, 75, 90, 120];
+
+  @override
+  void initState() {
+    super.initState();
+    final day = widget.initialDate;
+    // Arriving from a calendar day means the instructor already chose "later".
+    _goLiveNow = day == null;
+    if (day != null) _scheduledAt = _defaultSlotOn(day);
+  }
+
+  /// A sensible opening time: the next full hour today, 7:00 AM on other days.
+  DateTime _defaultSlotOn(DateTime day) {
+    final now = DateTime.now();
+    final isToday =
+        day.year == now.year && day.month == now.month && day.day == now.day;
+    if (!isToday) return DateTime(day.year, day.month, day.day, 7);
+    final next = DateTime(now.year, now.month, now.day, now.hour + 1);
+    return next;
+  }
 
   @override
   void dispose() {
@@ -29,16 +57,17 @@ class _CreateLiveClassScreenState extends State<CreateLiveClassScreen> {
 
   Future<void> _pickDateTime() async {
     final now = DateTime.now();
+    final base = _scheduledAt ?? now.add(const Duration(hours: 1));
     final d = await showDatePicker(
       context: context,
-      initialDate: now.add(const Duration(hours: 1)),
-      firstDate: now,
-      lastDate: now.add(const Duration(days: 60)),
+      initialDate: base.isBefore(now) ? now : base,
+      firstDate: DateTime(now.year, now.month, now.day),
+      lastDate: now.add(const Duration(days: 365)),
     );
     if (d == null || !mounted) return;
     final t = await showTimePicker(
       context: context,
-      initialTime: TimeOfDay.fromDateTime(now.add(const Duration(hours: 1))),
+      initialTime: TimeOfDay.fromDateTime(base),
     );
     if (t == null) return;
     setState(() {
@@ -48,15 +77,15 @@ class _CreateLiveClassScreenState extends State<CreateLiveClassScreen> {
 
   Future<void> _submit() async {
     if (_title.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a title')),
-      );
+      _toast('Please enter a title');
       return;
     }
     if (!_goLiveNow && _scheduledAt == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please pick a date and time')),
-      );
+      _toast('Please pick a date and time');
+      return;
+    }
+    if (!_goLiveNow && _scheduledAt!.isBefore(DateTime.now())) {
+      _toast('That time has already passed. Pick a later slot.');
       return;
     }
     setState(() => _saving = true);
@@ -66,22 +95,21 @@ class _CreateLiveClassScreenState extends State<CreateLiveClassScreen> {
         description: _desc.text.trim(),
         goLiveNow: _goLiveNow,
         scheduledAt: _goLiveNow ? null : _scheduledAt,
+        durationMinutes: _durationMinutes,
         visibility: _private ? 'private' : 'public',
       );
       if (!mounted) return;
       if (_goLiveNow) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(
-            builder: (_) => LiveBroadcastScreen(liveClass: c),
-          ),
+          MaterialPageRoute(builder: (_) => LiveBroadcastScreen(liveClass: c)),
         );
       } else {
         final code = c['joinCode'] ?? '';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(_private
-                ? 'Private class created. Share code: $code'
+                ? 'Private class scheduled. Share code: $code'
                 : 'Class scheduled. Code: $code'),
             duration: const Duration(seconds: 5),
           ),
@@ -90,85 +118,176 @@ class _CreateLiveClassScreenState extends State<CreateLiveClassScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
-        );
+        _toast(e.toString().replaceAll('Exception: ', ''));
         setState(() => _saving = false);
       }
     }
   }
 
+  void _toast(String message) {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  String _slotLabel(DateTime d) {
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    final hour = d.hour % 12 == 0 ? 12 : d.hour % 12;
+    final minute = d.minute.toString().padLeft(2, '0');
+    final period = d.hour < 12 ? 'AM' : 'PM';
+    return '${d.day} ${months[d.month - 1]} ${d.year}  ·  $hour:$minute $period';
+  }
+
+  String _durationLabel(int minutes) {
+    if (minutes < 60) return '$minutes min';
+    final h = minutes ~/ 60;
+    final m = minutes % 60;
+    return m == 0 ? '$h hr' : '$h hr $m min';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('New Live Class'),
-        backgroundColor: _green,
-        foregroundColor: Colors.white,
-      ),
+      backgroundColor: AppColors.bgLight,
+      appBar: appBar(title: 'New Live Class'),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 18, 16, 32),
         children: [
           TextField(
             controller: _title,
-            decoration: const InputDecoration(
-              labelText: 'Class title',
-              border: OutlineInputBorder(),
+            textCapitalization: TextCapitalization.sentences,
+            decoration: appInputDecoration(
+              label: 'Class title',
+              hint: 'Morning Flow',
+              prefixIcon: Icons.self_improvement_rounded,
             ),
           ),
           const SizedBox(height: 14),
           TextField(
             controller: _desc,
             maxLines: 3,
-            decoration: const InputDecoration(
-              labelText: 'Description (optional)',
-              border: OutlineInputBorder(),
+            textCapitalization: TextCapitalization.sentences,
+            decoration: appInputDecoration(
+              label: 'Description (optional)',
+              hint: 'What will you cover?',
             ),
           ),
-          const SizedBox(height: 10),
-          SwitchListTile(
-            value: _goLiveNow,
-            activeColor: _green,
-            title: const Text('Go live now'),
-            subtitle: const Text('Turn off to schedule for later'),
-            onChanged: (v) => setState(() => _goLiveNow = v),
-          ),
-          SwitchListTile(
-            value: _private,
-            activeColor: _green,
-            secondary: Icon(_private ? Icons.lock : Icons.public,
-                color: _green),
-            title: const Text('Private (invite only)'),
-            subtitle:
-                const Text('Only people with the join code can enter'),
-            onChanged: (v) => setState(() => _private = v),
-          ),
-          if (!_goLiveNow)
-            ListTile(
-              leading: const Icon(Icons.event, color: _green),
-              title: Text(_scheduledAt == null
-                  ? 'Pick date and time'
-                  : _scheduledAt!.toLocal().toString().substring(0, 16)),
-              trailing: const Icon(Icons.edit),
-              onTap: _pickDateTime,
+          const SizedBox(height: 18),
+
+          _card(
+            child: Column(
+              children: [
+                SwitchListTile(
+                  value: _goLiveNow,
+                  activeThumbColor: AppColors.accent,
+                  contentPadding: EdgeInsets.zero,
+                  title: Text('Go live now', style: AppTextStyles.heading3()),
+                  subtitle: Text('Turn off to schedule for later',
+                      style: AppTextStyles.caption()),
+                  onChanged: (v) => setState(() {
+                    _goLiveNow = v;
+                    if (!v) {
+                      _scheduledAt ??= _defaultSlotOn(DateTime.now());
+                    }
+                  }),
+                ),
+                if (!_goLiveNow) ...[
+                  const Divider(height: 8),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.event_rounded,
+                        color: AppColors.accent),
+                    title: Text(
+                      _scheduledAt == null
+                          ? 'Pick date and time'
+                          : _slotLabel(_scheduledAt!),
+                      style: AppTextStyles.bodyMedium(),
+                    ),
+                    trailing: const Icon(Icons.edit_rounded,
+                        size: 18, color: AppColors.textSecondary),
+                    onTap: _pickDateTime,
+                  ),
+                ],
+              ],
             ),
-          const SizedBox(height: 24),
-          SizedBox(
-            height: 52,
-            child: ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _green,
-                foregroundColor: Colors.white,
+          ),
+          const SizedBox(height: 14),
+
+          _card(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.timer_outlined,
+                        size: 18, color: AppColors.accent),
+                    const SizedBox(width: 8),
+                    Text('How long is the class?',
+                        style: AppTextStyles.heading3()),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _durations
+                      .map((m) => AppChip(
+                            label: _durationLabel(m),
+                            selected: _durationMinutes == m,
+                            onTap: () => setState(() => _durationMinutes = m),
+                          ))
+                      .toList(),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Used to block the slot on the schedule calendar.',
+                  style: AppTextStyles.caption(),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          _card(
+            child: SwitchListTile(
+              value: _private,
+              activeThumbColor: AppColors.accent,
+              contentPadding: EdgeInsets.zero,
+              secondary: Icon(
+                _private ? Icons.lock_rounded : Icons.public_rounded,
+                color: AppColors.accent,
               ),
-              onPressed: _saving ? null : _submit,
-              icon: Icon(_goLiveNow ? Icons.sensors : Icons.schedule),
-              label: Text(_saving
-                  ? 'Please wait...'
-                  : (_goLiveNow ? 'Create and go live' : 'Schedule class')),
+              title: Text('Private (invite only)',
+                  style: AppTextStyles.heading3()),
+              subtitle: Text('Only people with the join code can enter',
+                  style: AppTextStyles.caption()),
+              onChanged: (v) => setState(() => _private = v),
             ),
+          ),
+
+          const SizedBox(height: 26),
+          AppPrimaryButton(
+            label: _goLiveNow ? 'Create and go live' : 'Schedule class',
+            icon: _goLiveNow ? Icons.sensors_rounded : Icons.event_available_rounded,
+            loading: _saving,
+            onPressed: _saving ? null : _submit,
           ),
         ],
       ),
+    );
+  }
+
+  Widget _card({required Widget child}) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 6, 16, 14),
+      decoration: BoxDecoration(
+        color: AppColors.bgCard,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: AppShadows.soft,
+      ),
+      child: child,
     );
   }
 }
