@@ -8,6 +8,7 @@ import '../utils/language_helper.dart';
 import '../theme/app_theme.dart';
 import 'main_shell.dart';
 import 'instructor_home_screen.dart';
+import 'admin_dashboard_screen.dart';
 import 'instructor_signup_screen.dart';
 import 'profile_screen.dart';
 import '../Widgets/language_switcher.dart';
@@ -49,9 +50,13 @@ class _LoginScreenState extends State<LoginScreen> {
         response["gender"] ?? "",
       );
 
-      final routine = await ApiService.fetchUserRoutine(response["userId"]);
-
       final role = response["role"] ?? "user";
+      final isAdmin = response["isAdmin"] == true;
+
+      // Admins never need a personal routine; skip that fetch for them.
+      final routine = isAdmin
+          ? null
+          : await ApiService.fetchUserRoutine(response["userId"]);
 
       await ApiService.saveSession(
         response["userId"],
@@ -60,15 +65,21 @@ class _LoginScreenState extends State<LoginScreen> {
         response["ageGroup"] ?? "",
         response["gender"] ?? "",
         role: role,
+        isAdmin: isAdmin,
       );
+
+      Widget home;
+      if (isAdmin) {
+        home = const AdminDashboardScreen();
+      } else if (role == "instructor") {
+        home = const InstructorHomeScreen();
+      } else {
+        home = MainShell(initialRoutine: routine ?? {"routine": []});
+      }
 
       Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(
-          builder: (_) => role == "instructor"
-              ? const InstructorHomeScreen()
-              : MainShell(initialRoutine: routine ?? {"routine": []}),
-        ),
+        MaterialPageRoute(builder: (_) => home),
         (route) => false,
       );
     } catch (e) {

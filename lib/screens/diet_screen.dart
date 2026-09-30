@@ -33,6 +33,9 @@ class DietScreenState extends State<DietScreen> {
   Map<String, dynamic>? _plan;
   String _planText = '';
 
+  /// Diet school: 'ayurveda' | 'naturopathy' | 'medical'. App leans Ayurveda.
+  String _dietType = 'ayurveda';
+
   String t(String en, String mr, String hn) => LanguageHelper.t(en, mr, hn);
 
   String get langCode {
@@ -91,6 +94,7 @@ class DietScreenState extends State<DietScreen> {
         language: langCode,
         reportSummary: reportSummary,
         reportConditions: reportConditions,
+        dietType: _dietType,
       );
 
       if (!mounted) return;
@@ -159,6 +163,90 @@ class DietScreenState extends State<DietScreen> {
     final hydration = (plan['hydration'] ?? '').toString();
     if (hydration.isNotEmpty) b.write('$hydration ');
     return b.toString();
+  }
+
+  /// Three schools of diet. Selecting one re-generates the plan.
+  Widget _dietTypeSelector() {
+    final types = [
+      {
+        'key': 'ayurveda',
+        'label': t("Ayurveda", "आयुर्वेद", "आयुर्वेद"),
+        'icon': Icons.spa_rounded,
+      },
+      {
+        'key': 'naturopathy',
+        'label': t("Naturopathy", "निसर्गोपचार", "प्राकृतिक"),
+        'icon': Icons.eco_rounded,
+      },
+      {
+        'key': 'medical',
+        'label': t("Medical", "वैद्यकीय", "चिकित्सा"),
+        'icon': Icons.medical_services_outlined,
+      },
+    ];
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 2),
+      child: Row(
+        children: [
+          for (final ty in types)
+            Expanded(
+              child: GestureDetector(
+                onTap: _loading
+                    ? null
+                    : () {
+                        final key = ty['key'] as String;
+                        if (key == _dietType) return;
+                        setState(() => _dietType = key);
+                        if (_started) _generate();
+                      },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  decoration: BoxDecoration(
+                    color: _dietType == ty['key']
+                        ? AppColors.accent
+                        : AppColors.bgCard,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: _dietType == ty['key']
+                          ? AppColors.accent
+                          : AppColors.divider,
+                      width: 1.3,
+                    ),
+                    boxShadow: _dietType == ty['key']
+                        ? AppShadows.button
+                        : AppShadows.soft,
+                  ),
+                  child: Column(
+                    children: [
+                      Icon(
+                        ty['icon'] as IconData,
+                        size: 18,
+                        color: _dietType == ty['key']
+                            ? Colors.white
+                            : AppColors.accent,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        ty['label'] as String,
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.inter(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w600,
+                          color: _dietType == ty['key']
+                              ? Colors.white
+                              : AppColors.textPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
   }
 
   Widget _sectionCard(String title, IconData icon, List<String> items) {
@@ -321,6 +409,31 @@ class DietScreenState extends State<DietScreen> {
     return ListView(
       padding: const EdgeInsets.only(top: 12, bottom: 32),
       children: [
+        if ((_plan!['approach_note'] ?? '').toString().isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: AppColors.accent.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.accent.withOpacity(0.25)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.auto_awesome_rounded,
+                      color: AppColors.accent, size: 18),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      _plan!['approach_note'].toString(),
+                      style: AppTextStyles.caption(color: AppColors.accent),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         _sectionCard(
           t("Daily Guidelines", "दैनंदिन मार्गदर्शन", "दैनिक दिशानिर्देश"),
           Icons.tips_and_updates_outlined,
@@ -474,6 +587,7 @@ class DietScreenState extends State<DietScreen> {
                   ],
                 ),
               ),
+              _dietTypeSelector(),
               Expanded(
                 child: _loading
                     ? AppLoadingIndicator(

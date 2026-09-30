@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../providers/user_provider.dart';
 import '../services/api_service.dart';
 import '../services/voice_service.dart';
 import '../utils/language_helper.dart';
@@ -92,6 +94,123 @@ class _PoseDetailScreenState extends State<PoseDetailScreen> {
     VoiceService.instance.clearReader();
     VoiceService.instance.notifyPoseClosed(widget.poseId);
     super.dispose();
+  }
+
+  // ── Personalized safety: is this pose unsafe for the user's conditions? ────
+  static const Map<String, String> _condNorm = {
+    'diabetes': 'diabetes',
+    'thyroid': 'thyroid',
+    'high bp': 'high_blood_pressure',
+    'pcos': 'pcos',
+    'arthritis': 'arthritis',
+    'asthma': 'asthma',
+    'leg injury': 'leg_injury',
+    'pregnancy': 'pregnancy',
+    'post-pregnancy': 'post_pregnancy',
+    'post pregnancy': 'post_pregnancy',
+    'back pain': 'back_pain',
+    'heart condition': 'heart',
+    'migraine': 'migraine',
+  };
+
+  static const Map<String, List<String>> _unsafeKw = {
+    'pregnancy': [
+      'boat', 'navasana', 'plank', 'cobra', 'bhujang', 'bow', 'dhanur',
+      'wheel', 'chakra', 'camel', 'ustra', 'locust', 'shalabh', 'twist',
+      'matsyendra', 'headstand', 'sirsa', 'shoulder stand', 'sarvang',
+      'peacock', 'mayur', 'prone', 'supta',
+    ],
+    'post_pregnancy': [
+      'boat', 'navasana', 'wheel', 'chakra', 'headstand', 'sirsa',
+      'shoulder stand', 'sarvang', 'peacock', 'mayur',
+    ],
+    'high_blood_pressure': [
+      'headstand', 'sirsa', 'shoulder stand', 'sarvang', 'handstand',
+      'wheel', 'chakra',
+    ],
+    'heart': [
+      'headstand', 'sirsa', 'shoulder stand', 'sarvang', 'handstand',
+      'wheel', 'chakra',
+    ],
+    'back_pain': ['wheel', 'chakra', 'plough', 'hala'],
+    'migraine': ['headstand', 'sirsa', 'shoulder stand', 'sarvang'],
+  };
+
+  String _normCond(String c) {
+    final k = c.toLowerCase().trim();
+    return _condNorm[k] ?? k.replaceAll(' ', '_');
+  }
+
+  /// Which of the user's conditions make this pose risky (empty = safe).
+  List<String> _unsafeForConditions() {
+    final p = pose;
+    if (p == null) return [];
+    final conditions =
+        Provider.of<UserProvider>(context, listen: false)
+            .healthInfo
+            .medicalConditions;
+    if (conditions.isEmpty) return [];
+    final hay =
+        '${(p['name']?['en'] ?? '').toString().toLowerCase()} ${(p['name_sanskrit'] ?? '').toString().toLowerCase()}';
+    final contraTags = ((p['contraindication_tags'] as List?) ?? const [])
+        .map((e) => e.toString().toLowerCase())
+        .toList();
+    final hits = <String>[];
+    for (final raw in conditions) {
+      final norm = _normCond(raw);
+      final kws = _unsafeKw[norm] ?? const [];
+      if (kws.any((kw) => hay.contains(kw)) || contraTags.contains(norm)) {
+        hits.add(raw);
+      }
+    }
+    return hits;
+  }
+
+  Widget _safetyBanner() {
+    final hits = _unsafeForConditions();
+    if (hits.isEmpty) return const SizedBox.shrink();
+    final list = hits.join(', ');
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE53935).withOpacity(0.08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE53935).withOpacity(0.4)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.report_gmailerrorred_rounded,
+              color: Color(0xFFE53935), size: 22),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  LanguageHelper.t(
+                    "Not recommended for you",
+                    "तुमच्यासाठी शिफारस नाही",
+                    "आपके लिए अनुशंसित नहीं",
+                  ),
+                  style: AppTextStyles.heading3(color: const Color(0xFFC62828)),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  LanguageHelper.t(
+                    "This pose may not be safe with your condition ($list). Skip it, or practise only under expert guidance with modifications.",
+                    "ही मुद्रा तुमच्या स्थितीसाठी ($list) सुरक्षित नसू शकते. टाळा किंवा तज्ज्ञांच्या मार्गदर्शनाखालीच पर्यायांसह करा.",
+                    "यह आसन आपकी स्थिति ($list) के लिए सुरक्षित नहीं हो सकता. इसे छोड़ें, या विशेषज्ञ की देखरेख में संशोधनों के साथ ही करें.",
+                  ),
+                  style: AppTextStyles.caption(color: const Color(0xFFC62828)),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _chip(String text, {IconData? icon}) {
@@ -524,6 +643,7 @@ class _PoseDetailScreenState extends State<PoseDetailScreen> {
                   ),
                 ),
                 const SizedBox(height: 8),
+                _safetyBanner(),
                 _section(
                   LanguageHelper.t(
                     "Primary Benefits",

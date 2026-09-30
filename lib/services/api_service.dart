@@ -8,12 +8,12 @@ class ApiService {
   // static const String rootUrl = 'http://localhost:5000/';
 
   // Local WiFi (phone + PC on same network, no ADB path needed)
-  static const String baseUrl = 'http://192.168.1.101:5000/api';
-  static const String rootUrl = 'http://192.168.1.101:5000/';
+  // static const String baseUrl = 'http://192.168.1.101:5000/api';
+  // static const String rootUrl = 'http://192.168.1.101:5000/';
 
   // Production: Render (works anywhere, no PC/USB needed)
-  // static const String baseUrl = 'https://yoga-mitra-backend.onrender.com/api';
-  // static const String rootUrl = 'https://yoga-mitra-backend.onrender.com/';
+  static const String baseUrl = 'https://yoga-mitra-backend.onrender.com/api';
+  static const String rootUrl = 'https://yoga-mitra-backend.onrender.com/';
 
   // ── Deep convert any nested structure to plain Dart maps/lists ────────────
   static dynamic _deepConvert(dynamic value) {
@@ -221,6 +221,7 @@ class ApiService {
     String ageGroup,
     String gender, {
     String role = "user",
+    bool isAdmin = false,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString("userId", userId);
@@ -229,6 +230,7 @@ class ApiService {
     await prefs.setString("ageGroup", ageGroup);
     await prefs.setString("gender", gender);
     await prefs.setString("role", role);
+    await prefs.setString("isAdmin", isAdmin ? "true" : "false");
   }
 
   static Future<Map<String, String>?> loadSession() async {
@@ -242,7 +244,19 @@ class ApiService {
       "ageGroup": prefs.getString("ageGroup") ?? "",
       "gender": prefs.getString("gender") ?? "",
       "role": prefs.getString("role") ?? "user",
+      "isAdmin": prefs.getString("isAdmin") ?? "false",
     };
+  }
+
+  /// Presence ping — keeps the instructor's online dot fresh in the admin
+  /// console. Best-effort; never throws.
+  static Future<void> heartbeat(String userId) async {
+    if (userId.isEmpty) return;
+    try {
+      await http
+          .post(Uri.parse('$baseUrl/profile/$userId/heartbeat'))
+          .timeout(const Duration(seconds: 10));
+    } catch (_) {}
   }
 
   static Future<void> clearSession() async {
@@ -332,6 +346,7 @@ class ApiService {
     required String language,
     String reportSummary = '',
     List<String> reportConditions = const [],
+    String dietType = 'ayurveda',
   }) async {
     final resp = await http
         .post(
@@ -344,6 +359,7 @@ class ApiService {
             'language': language,
             'reportSummary': reportSummary,
             'reportConditions': reportConditions,
+            'dietType': dietType,
           }),
         )
         .timeout(const Duration(seconds: 120));

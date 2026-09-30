@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -27,11 +28,31 @@ class _InstructorHomeScreenState extends State<InstructorHomeScreen> {
   String _id = '';
   Map<String, dynamic> _stats = {};
   List _classes = [];
+  Timer? _hb;
 
   @override
   void initState() {
     super.initState();
     _load();
+    _startHeartbeat();
+  }
+
+  @override
+  void dispose() {
+    _hb?.cancel();
+    super.dispose();
+  }
+
+  /// Ping presence now and every 90s so the admin console shows us online.
+  Future<void> _startHeartbeat() async {
+    final p = await SharedPreferences.getInstance();
+    final id = p.getString('userId') ?? '';
+    if (id.isEmpty) return;
+    ApiService.heartbeat(id);
+    _hb = Timer.periodic(
+      const Duration(seconds: 90),
+      (_) => ApiService.heartbeat(id),
+    );
   }
 
   Future<void> _load() async {

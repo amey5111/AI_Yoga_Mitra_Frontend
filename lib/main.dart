@@ -11,6 +11,7 @@ import 'providers/user_provider.dart';
 import 'screens/welcome_screen.dart';
 import 'screens/main_shell.dart';
 import 'screens/instructor_home_screen.dart';
+import 'screens/admin_dashboard_screen.dart';
 import 'services/api_service.dart';
 import 'services/reminder_service.dart'; // ✅ ADD THIS IMPORT
 import 'services/voice_service.dart';
@@ -73,6 +74,14 @@ class _YogaMitraAppState extends State<YogaMitraApp> {
         ),
       );
       provider.setAgeGender(session['ageGroup'] ?? '', session['gender'] ?? '');
+
+      // Admin / recruiter console (the seeded instructor@yogamitra.in).
+      if ((session['isAdmin'] ?? 'false') == 'true') {
+        if (mounted) {
+          setState(() => startScreen = const AdminDashboardScreen());
+        }
+        return;
+      }
 
       // Instructors get a completely separate experience (no user tabs).
       if ((session['role'] ?? 'user') == 'instructor') {

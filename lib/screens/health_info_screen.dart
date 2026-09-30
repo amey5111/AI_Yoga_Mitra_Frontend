@@ -51,6 +51,11 @@ class _HealthInfoScreenState extends State<HealthInfoScreen> {
     "Arthritis",
     "Asthma",
     "Leg Injury",
+    "Pregnancy",
+    "Post-Pregnancy",
+    "Back Pain",
+    "Heart Condition",
+    "Migraine",
   ];
 
   final List<IconData> conditionIcons = [
@@ -61,6 +66,11 @@ class _HealthInfoScreenState extends State<HealthInfoScreen> {
     Icons.accessibility_new_rounded,
     Icons.air_outlined,
     Icons.directions_walk_outlined,
+    Icons.pregnant_woman_rounded,
+    Icons.child_friendly_rounded,
+    Icons.airline_seat_recline_normal_rounded,
+    Icons.monitor_heart_rounded,
+    Icons.sick_outlined,
   ];
 
   String getConditionDisplay(String condition) {
@@ -79,6 +89,18 @@ class _HealthInfoScreenState extends State<HealthInfoScreen> {
         return LanguageHelper.t("Asthma", "दमा", "दमा");
       case "Leg Injury":
         return LanguageHelper.t("Leg Injury", "पायाला दुखापत", "पैर की चोट");
+      case "Pregnancy":
+        return LanguageHelper.t("Pregnancy", "गर्भधारणा", "गर्भावस्था");
+      case "Post-Pregnancy":
+        return LanguageHelper.t(
+            "Post-Pregnancy", "प्रसूतीनंतर", "प्रसव के बाद");
+      case "Back Pain":
+        return LanguageHelper.t("Back Pain", "पाठदुखी", "पीठ दर्द");
+      case "Heart Condition":
+        return LanguageHelper.t(
+            "Heart Condition", "हृदयविकार", "हृदय रोग");
+      case "Migraine":
+        return LanguageHelper.t("Migraine", "मायग्रेन", "माइग्रेन");
       default:
         return condition;
     }
